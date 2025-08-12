@@ -4,6 +4,8 @@ import axios from 'axios'; // Import axios
 import Papa from 'papaparse'; // Import PapaParse for CSV parsing
 import MetadataConfirmation from './MetadataConfirmation'; // Import the new component
 
+const API_URL = import.meta.env.VITE_API_BASE_URL;
+
 function App() {
   const [currentPage, setCurrentPage] = useState('form'); // 'form', 'confirm_metadata', or 'result'
   const [formData, setFormData] = useState({
@@ -89,7 +91,7 @@ function App() {
     }
 
     try {
-      const response = await axios.post('http://localhost:8001/synthesize', data, {
+      const response = await axios.post('${API_URL}/synthesize', data, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -124,7 +126,7 @@ function App() {
     }
 
     try {
-      const response = await axios.post('http://localhost:8001/confirm_synthesis', data, {
+      const response = await axios.post('${API_URL}/confirm_synthesis', data, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -178,7 +180,7 @@ function App() {
     data.append('evaluation_methods', selectedEvaluations.join(','));
 
     try {
-      const response = await axios.post('http://localhost:8001/evaluate', data, {
+      const response = await axios.post('${API_URL}/evaluate', data, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
