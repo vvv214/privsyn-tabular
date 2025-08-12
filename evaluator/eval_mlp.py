@@ -43,7 +43,7 @@ def train_mlp(
         X_num_real, X_cat_real, y_real, X_num_val, X_cat_val, y_val = read_changed_val(data_path, val_size=0.2, model_step=model_step, seed=seed)
 
     X = None
-    print('-'*100)
+    
     if eval_type == 'merged':
         print('loading merged data')
         if not change_val:
@@ -120,7 +120,7 @@ def train_mlp(
     val_ds = SkDataset(X = X["val"].to_numpy(), y = y["val"])
     es = EarlyStopping(monitor="valid_loss", patience=16)
 
-    print('-'*100)
+    
 
     def f1(net, X, y):
         y_pred = net.predict(X)

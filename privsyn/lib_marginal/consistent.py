@@ -122,6 +122,7 @@ class Consistenter:
         iterations = 0
 
         while non_negativity and iterations < self.iterations:
+            self.logger.debug("Iteration: %s, Non-negativity: %s" % (iterations, non_negativity))
 
             # first make sure summation are the same
             consist_on_subset(set(), [marg for _, marg in self.margs.items()])
@@ -159,6 +160,7 @@ class Consistenter:
                     non_negativity = False
 
             self.logger.debug("non-negativity finish")
+            self.logger.debug("End of Iteration: %s, Non-negativity: %s" % (iterations, non_negativity))
             
             iterations += 1
 

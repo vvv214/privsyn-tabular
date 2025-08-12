@@ -1,3 +1,0 @@
-Current state: Initial FastAPI web application structure has been set up in the `web_app/` directory, including `main.py` (FastAPI app) and a draft of `synthesis_service.py` (for data synthesis logic). The changes have been pushed to GitHub. 
-
-Plan for tomorrow: Continue implementing the `run_synthesis` function in `web_app/synthesis_service.py` by correctly handling data loading from uploaded files, integrating with `preprocess_common.load_data_common.data_preprocesser_common`, and then calling `privsyn_main` to perform the synthesis. After that, implement the FastAPI endpoint in `web_app/main.py` to receive file uploads and trigger the synthesis process.

@@ -38,7 +38,7 @@ def train_catboost(
         X_num_real, X_cat_real, y_real, X_num_val, X_cat_val, y_val = read_changed_val(data_path, val_size=0.2, model_step=model_step, seed=seed)
 
     X = None
-    print('-'*100)
+    
     if eval_type == 'merged':
         print('loading merged data...')
         if not change_val:
@@ -111,7 +111,7 @@ def train_catboost(
     
     print(T_dict)
     pprint(catboost_config, width=100)
-    print('-'*100)
+    
     
     if D.is_regression:
         model = CatBoostRegressor(

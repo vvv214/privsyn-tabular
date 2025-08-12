@@ -14,7 +14,7 @@ class Marginal:
         self.attr_set = set(marg_domain.attrs)
 
         # self.num_key represents the number of different possible combinations in the marg
-        self.num_key = np.product(self.num_categories[self.attributes_index])
+        self.num_key = np.prod(self.num_categories[self.attributes_index])
         self.num_attributes = self.indicator.shape[0]
         self.ways = np.count_nonzero(self.indicator)
 
@@ -66,10 +66,7 @@ class Marginal:
             records[:, self.attributes_index], self.encode_num)
         # encode_records = records[:, self.attributes_index]
 
-        encode_key, count_num = np.unique(encode_records, return_counts=True)
-        indices = np.where(np.isin(np.arange(self.num_key), encode_key))[0]
-    
-        self.count[indices] = count_num
+        self.count = np.bincount(np.clip(encode_records, 0, self.num_key - 1), minlength=self.num_key)
 
 
     def calculate_normalize_count(self):
@@ -127,14 +124,9 @@ class Marginal:
         return encode_num
 
     def count_records_general(self, records):
-        count = np.zeros(self.num_key)
-
         encode_records = np.matmul(
             records[:, self.attributes_index], self.encode_num)
-        encode_key, value_count = np.unique(encode_records, return_counts=True)
-
-        indices = np.where(np.isin(np.arange(self.num_key), encode_key))[0]
-        count[indices] = value_count
+        count = np.bincount(np.clip(encode_records, 0, self.num_key - 1), minlength=self.num_key)
 
         return count
 
@@ -196,12 +188,14 @@ class Marginal:
 
         encode_tuple_key = np.matmul(bigger_marg.tuple_key, encode_num)
 
-        self.weights[index] = 1.0 / np.product(
+        self.weights[index] = 1.0 / np.prod(
             self.num_categories[np.setdiff1d(bigger_marg.attributes_index, self.attributes_index)])
         self.rhos[index] = bigger_marg.rho
 
+        # Truncate bigger_marg.count to bigger_marg.num_key to match encode_tuple_key length
+        truncated_bigger_marg_count = bigger_marg.count[:bigger_marg.num_key]
         self.summations[:, index] = np.bincount(
-            encode_tuple_key, weights=bigger_marg.count, minlength=self.num_key)
+            encode_tuple_key, weights=truncated_bigger_marg_count, minlength=self.num_key)
 
         # for i in range(self.num_key):
         #     key_index = np.where(encode_tuple_key == i)[0]

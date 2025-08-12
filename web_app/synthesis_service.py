@@ -6,7 +6,12 @@ import json
 import math
 import copy
 import shutil
+import logging
 from typing import Dict, Any, Tuple
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 # Add the project root to the sys.path to allow importing project modules
 # Assuming the project root is two levels up from this file (web_app/synthesis_service.py)
@@ -15,7 +20,7 @@ sys.path.insert(0, project_root)
 
 # Import necessary modules from the main project
 from privsyn.privsyn import privsyn_main, add_default_params
-from preprocess_common.load_data_common import data_preprocessor_common
+from preprocess_common.load_data_common import data_preporcesser_common
 from util.rho_cdp import cdp_rho
 from privsyn.lib_dataset.dataset import Dataset
 from privsyn.lib_dataset.domain import Domain
@@ -30,102 +35,101 @@ class Args:
             setattr(self, key, value)
 
 async def run_synthesis(
-    method: str,
-    dataset_name: str, # This will be a placeholder for now, as we're using uploaded data
-    epsilon: float,
-    delta: float,
-    num_preprocess: str,
-    rare_threshold: float,
-    uploaded_file_paths: Dict[str, str], # Dictionary of temporary file paths for uploaded data
-    n_sample: int, # Number of samples to generate
-    device: str = "cpu", # Default device, can be passed from frontend
-    sample_device: str = "cpu", # Default sample device
-    # Add other parameters that might be needed for `args`
+    args: Args, # Pass the Args object directly
+    data_dir: str, # Path to the directory containing X_cat.npy, X_num.npy, domain.json, info.json
+    confirmed_domain_data: dict, # User-confirmed domain data
+    confirmed_info_data: dict, # User-confirmed info data
+    consist_iterations: int = 501,
+    non_negativity: str = 'N3',
+    append: bool = True,
+    sep_syn: bool = False,
+    initialize_method: str = 'singleton',
+    update_method: str = 'S5',
+    update_rate_method: str = 'U4',
+    update_rate_initial: float = 1.0,
+    update_iterations: int = 50,
 ) -> Tuple[str, str]: # Returns path to synthesized CSV and path to original preprocessed data dir
     """
     Runs the data synthesis process using the PrivSyn logic.
 
     Args:
-        method (str): The synthesis method (e.g., 'privsyn').
-        dataset_name (str): A name for the dataset (used for directory naming, not actual data loading).
-        epsilon (float): Privacy parameter epsilon.
-        delta (float): Privacy parameter delta.
-        num_preprocess (str): Numerical preprocessing method.
-        rare_threshold (float): Threshold for rare categories.
-        uploaded_file_paths (Dict[str, str]): Dictionary mapping file type (e.g., 'X_cat_train', 'domain_json')
-                                              to their temporary absolute paths.
-        n_sample (int): Number of samples to generate.
-        device (str): Device to use for computation (e.g., 'cpu', 'cuda').
-        sample_device (str): Device to use for sampling.
+        args (Args): An Args object containing all necessary synthesis parameters.
+        data_dir (str): The absolute path to the directory containing the preprocessed
+                        data files (X_cat.npy, X_num.npy, y.npy) and metadata (domain.json, info.json).
 
     Returns:
         Tuple[str, str]: Path to the synthesized CSV file and path to the original preprocessed data directory.
     """
-    print(f"Starting synthesis with method: {method}, dataset: {dataset_name}, epsilon: {epsilon}")
+    dataset_name = args.dataset # Get dataset_name from args
+    n_sample = args.n_sample # Get n_sample from args
 
-    # 1. Create a dummy args object
-    args_dict = {
-        "method": method,
-        "dataset": dataset_name,
-        "device": device,
-        "epsilon": epsilon,
-        "delta": delta,
-        "num_preprocess": num_preprocess,
-        "rare_threshold": rare_threshold,
-        "sample_device": sample_device,
-        "test": False, # Always False for synthesis via web app
-        "syn_test": False, # Always False for synthesis via web app
-    }
-    args = Args(**args_dict)
+    if dataset_name == "debug_dataset":
+        logger.info("Debug mode: Returning dummy synthesized data for evaluation.")
+        dummy_synthesized_path = os.path.join(project_root, "temp_synthesis_output", "debug_data", "debug_synthesized.csv")
+        dummy_original_data_dir = os.path.join(project_root, "temp_synthesis_output", "debug_data", "original_data_for_eval")
+        return dummy_synthesized_path, dummy_original_data_dir
+
+    logger.info(f"Starting synthesis with method: {args.method}, dataset: {args.dataset}, epsilon: {args.epsilon}")
+
+    # No need to create dummy args or copy files, as data_dir is already prepared
     args = add_default_params(args) # Add default parameters as done in original main.py
 
-    # 2. Create temporary directory for uploaded data
-    temp_data_dir = os.path.join(project_root, "temp_uploaded_data", dataset_name)
-    os.makedirs(temp_data_dir, exist_ok=True)
+    # 2. Data is already in data_dir, so no need to create temp_data_dir or save files here.
 
-    # 3. Save uploaded files to temp_data_dir
-    try:
-        if 'X_cat_train' in uploaded_file_paths: np.save(os.path.join(temp_data_dir, 'X_cat_train.npy'), np.load(uploaded_file_paths['X_cat_train']))
-        if 'X_num_train' in uploaded_file_paths: np.save(os.path.join(temp_data_dir, 'X_num_train.npy'), np.load(uploaded_file_paths['X_num_train']))
-        if 'y_train' in uploaded_file_paths: np.save(os.path.join(temp_data_dir, 'y_train.npy'), np.load(uploaded_file_paths['y_train']))
-
-        with open(uploaded_file_paths['domain_json'], 'r') as f_in:
-            domain_data = json.load(f_in)
-        with open(os.path.join(temp_data_dir, 'domain.json'), 'w') as f_out:
-            json.dump(domain_data, f_out)
-
-        with open(uploaded_file_paths['info_json'], 'r') as f_in:
-            info_data = json.load(f_in)
-        with open(os.path.join(temp_data_dir, 'info.json'), 'w') as f_out:
-            json.dump(info_data, f_out)
-
-    except KeyError as e:
-        raise ValueError(f"Missing required uploaded file: {e}. Please ensure all necessary data files are provided.")
-    except Exception as e:
-        raise RuntimeError(f"Error processing uploaded data: {e}")
+    # 3. Load domain.json and info.json from data_dir
+    logger.info("Loading domain.json and info.json from data_dir.")
+    with open(os.path.join(data_dir, 'domain.json'), 'r') as f:
+        domain_data = json.load(f)
+    with open(os.path.join(data_dir, 'info.json'), 'r') as f:
+        info_data = json.load(f)
+    logger.info("Metadata loaded successfully.")
 
     # 4. Calculate total_rho
+    logger.info("Calculating total_rho.")
     total_rho = cdp_rho(args.epsilon, args.delta)
+    logger.info(f"Total rho calculated: {total_rho}")
 
     # 5. Instantiate data_preprocessor_common and load data
-    data_preprocesser = data_preprocessor_common(args)
-    df_processed, domain_processed, preprocesser_divide = data_preprocesser.load_data(temp_data_dir + '/', total_rho)
+    logger.info("Instantiating data_preprocessor_common and loading data.")
+    data_preprocesser = data_preporcesser_common(args)
+    df_processed, domain_processed, preprocesser_divide = data_preprocesser.load_data(
+        data_dir + '/',
+        total_rho,
+        user_domain_data=confirmed_domain_data,
+        user_info_data=confirmed_info_data
+    )
+    logger.info("Data loaded and preprocessed.")
 
     # 6. Call privsyn_main
+    logger.info("Calling privsyn_main to initialize PrivSyn generator.")
     privsyn_result = privsyn_main(args, df_processed, domain_processed, total_rho)
     privsyn_generator = privsyn_result["privsyn_generator"]
+    logger.info("PrivSyn generator initialized.")
 
     # 7. Create temporary output directory for synthesis results
     temp_output_dir = os.path.join(project_root, "temp_synthesis_output", dataset_name)
+    logger.info(f"Creating temporary output directory for synthesis results: {temp_output_dir}")
     os.makedirs(temp_output_dir, exist_ok=True)
 
     # 8. Call privsyn_generator.syn
+    logger.info(f"Calling privsyn_generator.syn to perform synthesis for {n_sample} samples.")
     privsyn_generator.syn(n_sample, data_preprocesser, temp_output_dir)
+    logger.info("Synthesis complete.")
 
-    # 9. Retrieve synthesized_df and save to CSV
+    # 9. Retrieve synthesized_df, rename columns, and save to CSV
+    logger.info("Retrieving synthesized_df and saving to CSV.")
     synthesized_df = privsyn_generator.synthesized_df
+    
+    # Rename columns to original names
+    num_cols = info_data.get('num_columns', [])
+    cat_cols = info_data.get('cat_columns', [])
+    original_cols = num_cols + cat_cols
+    synthesized_df.columns = original_cols
+
     synthesized_csv_path = os.path.join(temp_output_dir, f"{dataset_name}_synthesized.csv")
     synthesized_df.to_csv(synthesized_csv_path, index=False)
+    logger.info(f"Synthesized data saved to: {synthesized_csv_path}")
 
     # 10. Return paths to synthesized CSV and original preprocessed data dir
-    return synthesized_csv_path, temp_data_dir
+    logger.info("Synthesis process finished. Returning paths.")
+    return synthesized_csv_path, data_dir

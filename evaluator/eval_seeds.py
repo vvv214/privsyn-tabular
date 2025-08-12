@@ -226,7 +226,7 @@ def eval_seeds(
         tvd_report_final[k]['mean'] = np.mean(tvd_report[k])
         tvd_report_final[k]['std'] = np.std(tvd_report[k]) 
 
-    print('='*100)
+    
     print('tvd error evaluation:')
     print(tvd_report_final)
     if os.path.exists(parent_dir/ f"eval_tvd.json"):

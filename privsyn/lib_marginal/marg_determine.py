@@ -36,6 +36,7 @@ def marginal_selection(dataset, select_args):
         indif_df = calculate_indif(logger, dataset, dataset_name, select_args['indif_rho'])
     else:
         indif_df = pickle.load(open(config.DEPENDENCY_PATH + dataset_name, "rb"))
+    logger.info(f"indif_df:\n{indif_df}")
     
     #################################### main procedure of algorithm 1 #########################################
     gap = 1e10
@@ -75,10 +76,15 @@ def marginal_selection(dataset, select_args):
                 selected_index = j
                 error_new = error_temp
 
+        if selected_index is None:
+            break
+
         gap = overall_error - error_new
         overall_error = error_new
         selected.add(selected_index)
         unselected.remove(selected_index)
+
+        logger.info(f"gap: {gap}, error_new: {error_new}, selected_index: {selected_index}")
 
         first_attr, second_attr = indif_df.loc[selected_index, "first_attr"], indif_df.loc[
             selected_index, "second_attr"]

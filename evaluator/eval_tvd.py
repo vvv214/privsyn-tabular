@@ -216,7 +216,7 @@ def make_tvd(
     synthetic_data_path,
     data_path
 ):  
-    print('-' * 100)
+    
     print('Starting TVD evaluation')
     X_num_real, X_cat_real, y_real = read_pure_data(data_path, split = 'test')
     X_num_fake, X_cat_fake, y_fake = read_pure_data(synthetic_data_path, split = 'train') 

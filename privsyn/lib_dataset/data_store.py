@@ -33,6 +33,7 @@ class DataStore:
             pickle.dump(records, open(os.path.join(save_path, '_'.join( (self.args['dataset_name'], str(self.args['epsilon'])) )), 'wb'))
         
     def save_marginal(self, marginals):
+        os.makedirs(os.path.dirname(self.marginal_file), exist_ok=True)
         pickle.dump(marginals, open(self.marginal_file, 'wb'))
     
     def load_marginal(self):

@@ -31,10 +31,6 @@ from tqdm import tqdm
 class Dataset:
     X_num: Optional[ArrayDict]
     X_cat: Optional[ArrayDict]
-    y: ArrayDict
-    y_info: Dict[str, Any]
-    task_type: TaskType
-    n_classes: Optional[int]
 
     @classmethod
     def from_dir(cls, dir_: Union[Path, str]) -> 'Dataset':
@@ -54,23 +50,9 @@ class Dataset:
         return Dataset(
             load('X_num') if dir_.joinpath('X_num_train.npy').exists() else None,
             load('X_cat') if dir_.joinpath('X_cat_train.npy').exists() else None,
-            load('y'),
-            {},
-            TaskType(info['task_type']),
-            info.get('n_classes'),
         )
 
-    @property
-    def is_binclass(self) -> bool:
-        return self.task_type == TaskType.BINCLASS
-
-    @property
-    def is_multiclass(self) -> bool:
-        return self.task_type == TaskType.MULTICLASS
-
-    @property
-    def is_regression(self) -> bool:
-        return self.task_type == TaskType.REGRESSION
+    
 
     @property
     def n_num_features(self) -> int:
@@ -84,16 +66,9 @@ class Dataset:
     def n_features(self) -> int:
         return self.n_num_features + self.n_cat_features
 
-    def size(self, part: Optional[str]) -> int:
-        return sum(map(len, self.y.values())) if part is None else len(self.y[part])
+    
 
-    @property
-    def nn_output_dim(self) -> int:
-        if self.is_multiclass:
-            assert self.n_classes is not None
-            return self.n_classes
-        else:
-            return 1
+    
     
     def reverse_cat_rare(self, X_cat) -> np.ndarray:
         if (self.cat_rare_dict is None) or (all(len(sublist) == 0 for sublist in self.cat_rare_dict)):
@@ -110,172 +85,15 @@ class Dataset:
     def get_category_sizes(self, part: str) -> List[int]:
         return [] if self.X_cat is None else get_category_sizes(self.X_cat[part])
 
-    def calculate_metrics(
-        self,
-        predictions: Dict[str, np.ndarray],
-        prediction_type: Optional[str],
-    ) -> Dict[str, Any]:
-        metrics = {
-            x: calculate_metrics(
-                self.y[x], predictions[x], self.task_type, prediction_type, self.y_info
-            )
-            for x in predictions
-        }
-        if self.task_type == TaskType.REGRESSION:
-            score_key = 'rmse'
-            score_sign = -1
-        else:
-            score_key = 'accuracy'
-            score_sign = 1
-        for part_metrics in metrics.values():
-            part_metrics['score'] = score_sign * part_metrics[score_key]
-        return metrics
-
-    def syn_pretrain_data(self, epsilon, delta, sample_num, **kwargs):
-        """
-        This function is used to generate pretrain data from train data
-        """
-        import AIM.mbi.Dataset as aim_ds
-        from AIM.aim import AIM 
-
-        if self.X_num is None: 
-            aim_data = aim_ds.Dataset.load_from_dataset(None, self.X_cat['train'], self.y['train'])
-        elif self.X_cat is None:
-            aim_data = aim_ds.Dataset.load_from_dataset(self.X_num['train'], None, self.y['train'])
-        else:
-            aim_data = aim_ds.Dataset.load_from_dataset(self.X_num['train'], self.X_cat['train'], self.y['train'])
-
-        workload = list(itertools.combinations(aim_data.domain, kwargs.get("degree", 2)))
-        workload = [cl for cl in workload if aim_data.domain.size(cl) <= kwargs.get("max_cells", 10000)]
-        workload = [(cl, 1.0) for cl in workload]
-
-        mech = AIM(
-            epsilon,
-            delta,
-            max_model_size=kwargs.get("max_model_size", 80),
-            max_iters=kwargs.get("max_iters", 1000),
-        )
-        mech.run(aim_data, workload)
-        syn = mech.syn_data(
-            num_synth_rows = sample_num
-        )
-
-        num_row = self.X_num['train'].shape[1] if self.X_num is not None else 0
-        cat_row = self.X_cat['train'].shape[1] if self.X_cat is not None else 0
-
-        if self.X_num is not None:
-            self.X_num['pretrain'] = syn.df.iloc[:, 0: num_row].to_numpy().astype(float)
-        if self.X_cat is not None: 
-            self.X_cat['pretrain'] = syn.df.iloc[:, num_row: num_row + cat_row].to_numpy().astype(int) if self.X_cat is not None else None
-        self.y['pretrain'] = syn.df.iloc[:, -1].to_numpy().reshape(-1).astype(int)
-
-        return 0
-
-    def syn_pretrain_data_merf(self, epsilon, delta, device, sample_num, **kwargs):
-        from DP_MERF.single_generator_priv_all import merf_main
-        from DP_MERF.sample import merf_heterogeneous_sample
-
-        merf_model, merf_dict = merf_main(
-                                    dataset = 'pretrain',
-                                    dp_epsilon = epsilon,
-                                    device=device,
-                                    dp_delta = delta,
-                                    seed_number=0,
-                                    n_features_arg = 2000, 
-                                    mini_batch_size_arg = 0.05, 
-                                    how_many_epochs_arg = 500, 
-                                    is_priv_arg = True,
-                                    X_num = self.X_num['train'] if self.X_num is not None else None,
-                                    X_cat = self.X_cat['train'] if self.X_cat is not None else None,
-                                    y = self.y['train'],
-                                    eval=False
-                                )
-
-        merf_dict['n'] = sample_num
-
-        x_num, x_cat, y = merf_heterogeneous_sample(
-            **merf_dict,
-            parent_dir = None,
-            device = device,
-            model=merf_model, 
-            save=False
-        )
-
-        if self.X_num is not None:
-            self.X_num['pretrain'] = x_num.astype(float)
-        if self.X_cat is not None: 
-            self.X_cat['pretrain'] = x_cat.astype(int) if self.X_cat is not None else None
-        self.y['pretrain'] = y.astype(int)
-
-        return 0
+    
 
     
 
-    def pretrain_data_imputation(self, rho, seed = 0, margin_all = False):
-        random.seed(seed)
-        num_miss = []
-        cat_miss = []
-        self.num_margin = []
-        self.cat_margin = []
-        self.y_margin = {}
-        
-        if self.X_num is not None: 
-            num_miss = list(range(self.X_num['pretrain'].shape[1]))
-            num_miss_attr = len(num_miss) if margin_all else np.isnan(self.X_num['pretrain']).any(axis=0).sum() 
-        if self.X_cat is not None:
-            cat_miss = list(range(self.X_cat['pretrain'].shape[1]))
-            cat_miss_attr = len(cat_miss) if margin_all else np.isnan(self.X_cat['pretrain']).any(axis=0).sum() 
+    
 
-        miss_attr = num_miss_attr + cat_miss_attr + int(margin_all)
-        if miss_attr == 0:
-            print('No missing data')
-            return 0
-        else:
-            rho_attr = rho/miss_attr 
+    
 
-            for i in num_miss:
-                element, count = np.unique(self.X_num['train'][:, i], return_counts = True)
-                count = count + np.sqrt(2.0) * np.sqrt(1 / (2*rho_attr)) * np.random.randn(len(count))
-                count = np.where(count < 0, 0.0, count)
-
-                if margin_all:
-                    self.num_margin.append({})
-                    for j in range(len(element)):
-                        self.num_margin[i][element[j]] = count[j]/sum(count)
-
-                miss_idx = np.isnan(self.X_num['pretrain'][:, i])
-                if miss_idx.any():
-                    self.X_num['pretrain'][miss_idx, i] = np.random.choice(
-                        element,
-                        size = sum(miss_idx),
-                        p = count/np.sum(count)
-                    )
-            for i in cat_miss:
-                element, count = np.unique(self.X_cat['train'][:, i], return_counts = True)
-                count = count + np.sqrt(2.0) * np.sqrt(1 / (2*rho_attr)) * np.random.randn(len(count))
-                count = np.where(count < 0, 0.0, count)
-
-                if margin_all:
-                    self.cat_margin.append({})
-                    for j in range(len(element)):
-                        self.cat_margin[i][element[j]] = count[j]/sum(count)
-
-                miss_idx = np.isnan(self.X_cat['pretrain'][:, i])
-                if miss_idx.any():
-                    self.X_cat['pretrain'][miss_idx, i] = np.random.choice(
-                        element,
-                        size = sum(miss_idx),
-                        p = count/np.sum(count)
-                    )
-            if margin_all:
-                element, count = np.unique(self.y['train'], return_counts = True)
-                count = count + np.sqrt(2.0) * np.sqrt(1 / (2*rho_attr)) * np.random.randn(len(count))
-                count = np.where(count < 0, 0.0, count)
-                for j in range(len(element)):
-                    self.y_margin[element[j]] = count[j]/sum(count)
-
-            print('Finish pretrain data imputation')
-            return 0
+    
     
 
     def update_pretrain_data(self, idx_filter, aug_data = {}):
@@ -498,7 +316,6 @@ def change_val_fn(dataset: Dataset, have_pretrain: int = 0, val_size: float = 0.
 
 
 def read_pure_data(path, split='train'):
-    y = np.load(os.path.join(path, f'y_{split}.npy'), allow_pickle=True)
     X_num = None
     X_cat = None
     if os.path.exists(os.path.join(path, f'X_num_{split}.npy')):
@@ -506,7 +323,7 @@ def read_pure_data(path, split='train'):
     if os.path.exists(os.path.join(path, f'X_cat_{split}.npy')):
         X_cat = np.load(os.path.join(path, f'X_cat_{split}.npy'), allow_pickle=True)
 
-    return X_num, X_cat, y
+    return X_num, X_cat
 
 def read_changed_val(path, val_size=0.2, model_step='finetune', seed=0):
     path = Path(path)

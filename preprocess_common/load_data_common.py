@@ -16,7 +16,7 @@ class data_preporcesser_common():
         self.args = args
         self.cat_output_type = 'one_hot' if self.args.method == 'merf' else 'ordinal'
 
-    def load_data(self, path, rho):
+    def load_data(self, path, rho, user_domain_data: dict = None, user_info_data: dict = None):
         # preprocesser and column info will be saved in this class
         # dataframe, domain domain, portion of rho will be returned
 
@@ -26,12 +26,24 @@ class data_preporcesser_common():
 
         X_num = None 
         X_cat = None 
+        domain_for_clipping = {} # Initialize domain_for_clipping 
+
+        # Load domain data (either user-provided or from file)
+        if user_domain_data is not None:
+            domain = user_domain_data
+        else:
+            domain = json.load(open(os.path.join(path, 'domain.json'))) 
 
         if os.path.exists(os.path.join(path, 'X_num_train.npy')):
             X_num = np.load(os.path.join(path, 'X_num_train.npy'), allow_pickle=True)
         if os.path.exists(os.path.join(path, 'X_cat_train.npy')):
-            X_cat = np.load(os.path.join(path, 'X_cat_train.npy'), allow_pickle=True)
-        y = np.load(os.path.join(path, 'y_train.npy'), allow_pickle=True)
+            X_cat_raw = np.load(os.path.join(path, 'X_cat_train.npy'), allow_pickle=True)
+            # Convert to pandas DataFrame to ensure proper handling of mixed types and then to object array
+            X_cat = pd.DataFrame(X_cat_raw).astype(str).to_numpy()
+        
+        print(f"X_num shape: {X_num.shape if X_num is not None else None}")
+        print(f"X_cat shape: {X_cat.shape if X_cat is not None else None}")
+        
         num_divide, cat_divide = calculate_rho_allocate(X_num, X_cat, num_prep)
 
         if (rho == 0) and (num_divide + cat_divide > 0):
@@ -41,44 +53,72 @@ class data_preporcesser_common():
                 rho = cdp_rho(0.1*(num_divide+cat_divide)*1.0, 0.1*(num_divide+cat_divide)*1e-5) # this is the default value setting
     
         if X_num is not None:
+            # Apply clipping based on user_domain_data for numerical features
+            for key, value in domain_for_clipping.items(): # Use domain_for_clipping
+                if key.startswith('num_attr_') and isinstance(value, dict) and 'min' in value and 'max' in value:
+                    try:
+                        # Extract the index from 'num_attr_X' (e.g., 'num_attr_1' -> 0)
+                        col_index = int(key.split('_')[-1]) - 1
+                        if 0 <= col_index < X_num.shape[1]:
+                            X_num[:, col_index] = np.clip(X_num[:, col_index], value['min'], value['max'])
+                    except (ValueError, IndexError):
+                        # Handle cases where key format is unexpected or index is out of bounds
+                        pass
+            
+            print("Defining domain_for_clipping")
+        # The 'domain' variable for clipping will be user_domain_data if provided, else domain
+        domain_for_clipping = user_domain_data if user_domain_data is not None else domain
+
+        
+
+        if X_num is not None:
+            print("Entering clipping loop")
+            # Apply clipping based on user_domain_data for numerical features
+            for key, value in domain_for_clipping.items(): # Use domain_for_clipping
+                if key.startswith('num_attr_') and isinstance(value, dict) and 'min' in value and 'max' in value:
+                    try:
+                        # Extract the index from 'num_attr_X' (e.g., 'num_attr_1' -> 0)
+                        col_index = int(key.split('_')[-1]) - 1
+                        if 0 <= col_index < X_num.shape[1]:
+                            X_num[:, col_index] = np.clip(X_num[:, col_index], value['min'], value['max'])
+                    except (ValueError, IndexError):
+                        # Handle cases where key format is unexpected or index is out of bounds
+                        pass
+            
             if num_prep != 'none':
                 ord = False if self.args.method in ['rap', 'gsd'] else True
                 self.num_encoder = discretizer(num_prep, num_divide * 0.1 * rho, ord=ord) # return an ordinal encoded discrete data
             else:
                 self.num_encoder = sklearn.preprocessing.MinMaxScaler(feature_range=(0,1))
-            X_num = self.num_encoder.fit_transform(X_num)
+            X_num = self.num_encoder.fit_transform(X_num).astype(int)
             self.num_col = X_num.shape[1]
         if X_cat is not None:
             self.cat_encoder = rare_merger(cat_divide * 0.1 * rho, rare_threshold=rare_threshold, output_type=self.cat_output_type) #by default return ordinal encoded data
-            X_cat = self.cat_encoder.fit_transform(X_cat)
+            X_cat = self.cat_encoder.fit_transform(X_cat).astype(int)
             self.cat_col = X_cat.shape[1]
+
+        
+
+        print("Defining domain_for_clipping")
 
         if self.args.method in ('merf', 'ddpm'):
             df = {
                 "X_num": X_num,
                 "X_cat": X_cat,
-                "y": y
             }
             domain = {
                 "X_num": [len(set(X_num[:, i])) for i in range(self.num_col)] if X_num is not None else [],
                 "X_cat": [len(cat) for cat in self.cat_encoder.ordinal_encoder.categories_] if X_cat is not None else [],
-                "y": [len(set(y))]
             }
         else:
-            col_name = [f'num_attr_{i}' for i in range(1, self.num_col + 1)] + [f'cat_attr_{i}' for i in range(1, self.cat_col + 1)] + ['y_attr']
+            col_name = [f'num_attr_{i}' for i in range(1, self.num_col + 1)] + [f'cat_attr_{i}' for i in range(1, self.cat_col + 1)]
 
             if X_num is None:
-                df = pd.DataFrame(np.concatenate((X_cat, y.reshape(-1,1)), axis=1), columns=col_name)
+                df = pd.DataFrame(X_cat, columns=col_name)
             elif X_cat is None:
-                df = pd.DataFrame(np.concatenate((X_num, y.reshape(-1,1)), axis=1), columns=col_name)
+                df = pd.DataFrame(X_num, columns=col_name)
             else:
-                df = pd.DataFrame(np.concatenate((X_num, X_cat, y.reshape(-1,1)), axis=1), columns=col_name)
-
-            domain = json.load(open(os.path.join(path, 'domain.json')))
-            for i in range(1, self.num_col + 1):
-                domain[f'num_attr_{i}'] = min(domain[f'num_attr_{i}'], len(set(X_num[:, i-1])))
-            for i in range(1, self.cat_col + 1):
-                domain[f'cat_attr_{i}'] = min(domain[f'cat_attr_{i}'], len(set(X_cat[:, i-1]))) 
+                df = pd.DataFrame(np.concatenate((X_num, X_cat), axis=1), columns=col_name) 
     
         return df, domain, 0.1*(num_divide + cat_divide)
 
@@ -109,8 +149,4 @@ class data_preporcesser_common():
             if path is not None:
                 np.save(os.path.join(path, 'X_cat_train.npy'), x_cat) 
         
-        y = df[:, -1].reshape(-1).astype(int)
-        if path is not None:
-            np.save(os.path.join(path, 'y_train.npy'), y) 
-        
-        return x_num, x_cat, y
+        return x_num, x_cat

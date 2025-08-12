@@ -42,7 +42,7 @@ def train_simple(
         X_num_real, X_cat_real, y_real, X_num_val, X_cat_val, y_val = read_changed_val(data_path, val_size=0.2, model_step=model_step)
 
     X = None
-    print('-'*100)
+    
     if eval_type == 'merged':
         print('loading merged data...')
         if not change_val:
@@ -94,7 +94,7 @@ def train_simple(
 
     print(f'Train size: {X["train"].shape}, Val size {X["val"].shape}')
     print(T_dict)
-    print('-'*100)
+    
 
     if params is None:
         if model_step == 'finetune':

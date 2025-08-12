@@ -139,7 +139,8 @@ class PrivSyn():
     
     def anonymize_marg(self, marg, rho=0.0):
         sigma = math.sqrt(self.args['marg_add_sensitivity'] ** 2 / (2.0 * rho))
-        noise = np.random.normal(scale=sigma, size=marg.num_key)
+        noise = np.random.normal(scale=sigma, size=marg.count.shape[0]) # Use actual size of marg.count
+        marg.count = marg.count.astype(float) # Convert to float before adding noise
         marg.count += noise
 
         return marg
@@ -182,8 +183,15 @@ class PrivSyn():
             
 
     def postprocessing(self, preprocesser, save_path = None):
-        print(self.synthesized_df['y_attr'].value_counts())
-        preprocesser.reverse_data(self.synthesized_df, save_path)
+        
+        x_num_rev, x_cat_rev = preprocesser.reverse_data(self.synthesized_df, save_path)
+        
+        if x_num_rev is not None and x_cat_rev is not None:
+            self.synthesized_df = pd.DataFrame(np.concatenate((x_num_rev, x_cat_rev), axis=1))
+        elif x_num_rev is not None:
+            self.synthesized_df = pd.DataFrame(x_num_rev)
+        elif x_cat_rev is not None:
+            self.synthesized_df = pd.DataFrame(x_cat_rev)
 
 
 
@@ -224,21 +232,28 @@ def config_logger():
 
 
 def add_default_params(args):
+    defaults = {
+        'is_cal_marginals': True,
+        'is_cal_depend': True,
+        'is_combine': True,
+        'marg_add_sensitivity': 1.0,
+        'marg_sel_threshold': 20000,
+        'non_negativity': "N3",
+        'consist_iterations': 501,
+        'initialize_method': "singleton",
+        'update_method': "S5",
+        'append': True,
+        'sep_syn': False,
+        'update_rate_method': "U4",
+        'update_rate_initial': 1.0,
+        'update_iterations': 50
+    }
+    
     args.dataset_name = args.dataset
-    args.is_cal_marginals = True 
-    args.is_cal_depend = True
-    args.is_combine = True 
-    args.marg_add_sensitivity = 1.0
-    args.marg_sel_threshold = 20000
-    args.non_negativity = "N3"
-    args.consist_iterations = 501
-    args.initialize_method = "singleton"
-    args.update_method = "S5"
-    args.append = True 
-    args.sep_syn = False 
-    args.update_rate_method = "U4"
-    args.update_rate_initial = 1.0
-    args.update_iterations = 50
+
+    for key, value in defaults.items():
+        if not hasattr(args, key):
+            setattr(args, key, value)
 
     return args
 

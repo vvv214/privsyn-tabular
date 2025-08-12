@@ -1,0 +1,16 @@
+fastapi
+uvicorn[standard]
+pandas
+numpy==1.26.4
+python-multipart
+networkx
+tqdm
+scikit-learn
+matplotlib
+torch
+torchvision
+torchaudio
+tomli
+tomli_w
+category_encoders
+gunicorn

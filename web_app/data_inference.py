@@ -1,6 +1,27 @@
 import pandas as pd
 import numpy as np
 import json
+import zipfile
+import io
+from fastapi import UploadFile
+
+def load_dataframe_from_uploaded_file(file: UploadFile) -> pd.DataFrame:
+    """
+    Loads a Pandas DataFrame from an uploaded CSV or ZIP file.
+    If a ZIP file, it extracts the first CSV file found within.
+    """
+    if file.filename.endswith('.csv'):
+        return pd.read_csv(io.StringIO(file.file.read().decode('utf-8')))
+    elif file.filename.endswith('.zip'):
+        with zipfile.ZipFile(io.BytesIO(file.file.read()), 'r') as zf:
+            csv_files = [f for f in zf.namelist() if f.endswith('.csv')]
+            if not csv_files:
+                raise ValueError("No CSV file found inside the ZIP archive.")
+            # Take the first CSV file found
+            with zf.open(csv_files[0]) as csv_file:
+                return pd.read_csv(io.StringIO(csv_file.read().decode('utf-8')))
+    else:
+        raise ValueError("Unsupported file type. Please upload a CSV or ZIP file.")
 
 def infer_data_metadata(df: pd.DataFrame, target_column: str = 'y_attr') -> dict:
     """
@@ -18,51 +39,58 @@ def infer_data_metadata(df: pd.DataFrame, target_column: str = 'y_attr') -> dict
             - 'domain_data': Dictionary for domain.json.
             - 'info_data': Dictionary for info.json.
     """
-    X_cat = []
-    X_num = []
-    y = None
+    X_cat_cols = []
+    X_num_cols = []
 
     domain_data = {}
     info_data = {
+        "name": "UploadedDataset", # Placeholder, can be refined later
+        "id": "uploaded-dataset-default", # Placeholder
+        "task_type": "unknown", # Default, as target column is ignored
+        "n_num_features": 0,
+        "n_cat_features": 0,
+        "n_classes": 0, # No target column, so n_classes is 0
         "train_size": len(df),
-        "n_classes": 0, # Will be updated if target_column is found
-        "columns": [] # To store column names and their inferred types
+        "test_size": 0, # Cannot infer from single file
+        "val_size": 0 # Cannot infer from single file
     }
 
-    # Separate target column
     if target_column in df.columns:
-        y = df[target_column].values
-        info_data["n_classes"] = len(np.unique(y)) # Assuming classification task
         df = df.drop(columns=[target_column])
-    else:
-        print(f"Warning: Target column '{target_column}' not found. Proceeding without a target variable.")
+
+    num_feature_count = 0
+    cat_feature_count = 0
 
     for col in df.columns:
-        # Try to infer data type
-        if pd.api.types.is_numeric_dtype(df[col]):
-            # Check if it's truly numerical or categorical represented as numbers
-            # A simple heuristic: if unique values are few, treat as categorical
-            if df[col].nunique() < len(df) * 0.05 and df[col].nunique() < 50: # Heuristic for categorical
-                X_cat.append(df[col].astype(str).values) # Convert to string for categorical
-                domain_data[col] = len(df[col].unique())
-                info_data["columns"].append({"name": col, "type": "categorical"})
-            else:
-                X_num.append(df[col].values)
-                domain_data[col] = {"min": df[col].min(), "max": df[col].max()}
-                info_data["columns"].append({"name": col, "type": "numerical"})
+        # Heuristic for categorical vs. numerical
+        # If unique values are few (e.g., < 50 and < 5% of total rows), treat as categorical
+        if pd.api.types.is_numeric_dtype(df[col]) and df[col].nunique() > 50 and df[col].nunique() > len(df) * 0.05:
+            # Treat as numerical
+            num_feature_count += 1
+            X_num_cols.append(col)
+            # For domain.json, use nunique for numerical as per bank example
+            domain_data[f"num_attr_{num_feature_count}"] = df[col].nunique()
         else:
-            # Treat as categorical (e.g., strings, objects)
-            X_cat.append(df[col].astype(str).values)
-            domain_data[col] = len(df[col].unique())
-            info_data["columns"].append({"name": col, "type": "categorical"})
+            # Treat as categorical (strings, objects, or numerical with few unique values)
+            cat_feature_count += 1
+            X_cat_cols.append(col)
+            domain_data[f"cat_attr_{cat_feature_count}"] = df[col].nunique()
 
-    X_cat_np = np.array(X_cat).T if X_cat else np.array([])
-    X_num_np = np.array(X_num).T if X_num else np.array([])
+    info_data["n_num_features"] = num_feature_count
+    info_data["n_cat_features"] = cat_feature_count
+    info_data["num_columns"] = X_num_cols
+    info_data["cat_columns"] = X_cat_cols
+
+    # Reorder df columns to match X_num_cols and X_cat_cols for consistent numpy array creation
+    df_num = df[X_num_cols] if X_num_cols else pd.DataFrame()
+    df_cat = df[X_cat_cols] if X_cat_cols else pd.DataFrame()
+
+    X_num_np = df_num.values if not df_num.empty else np.array([])
+    X_cat_np = df_cat.astype(str).values if not df_cat.empty else np.array([])
 
     return {
         'X_cat': X_cat_np,
         'X_num': X_num_np,
-        'y': y,
         'domain_data': domain_data,
         'info_data': info_data
     }
