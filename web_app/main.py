@@ -29,14 +29,14 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Allow your frontend origin
+    allow_origins=["http://localhost:5173","https://www.privsyn.com/"],  # Allow your frontend origin
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Mount static files for the frontend
-app.mount("/static", StaticFiles(directory="web_app/static"), name="static")
+# app.mount("/static", StaticFiles(directory="web_app/static"), name="static")
 
 # Store inferred data temporarily for confirmation flow
 # Key: unique_id, Value: {"df": pd.DataFrame, "domain_data": dict, "info_data": dict, "target_column": str}
