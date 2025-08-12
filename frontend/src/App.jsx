@@ -11,15 +11,10 @@ function App() {
     num_preprocess: 'uniform_kbins', // Default value
     rare_threshold: 0.002, // Default value
     n_sample: 5000, // Default value
+    target_column: 'y_attr', // New form field for target column
   });
 
-  const [files, setFiles] = useState({
-    x_cat_train: null,
-    x_num_train: null,
-    y_train: null,
-    domain_json: null,
-    info_json: null,
-  });
+  const [dataFile, setDataFile] = useState(null); // Single file input for CSV
 
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -34,11 +29,7 @@ function App() {
   };
 
   const handleFileChange = (e) => {
-    const { name, files: selectedFiles } = e.target;
-    setFiles((prevFiles) => ({
-      ...prevFiles,
-      [name]: selectedFiles[0], // Only take the first file if multiple are selected
-    }));
+    setDataFile(e.target.files[0]); // Set the single data file
   };
 
   const handleSubmit = async (e) => {
@@ -51,10 +42,12 @@ function App() {
     for (const key in formData) {
       data.append(key, formData[key]);
     }
-    for (const key in files) {
-      if (files[key]) {
-        data.append(key, files[key]);
-      }
+    if (dataFile) {
+      data.append('data_file', dataFile); // Append the single data file
+    } else {
+      setError('Please upload a data file.');
+      setMessage('');
+      return;
     }
 
     try {
@@ -183,62 +176,28 @@ function App() {
           </div>
         </div>
 
-        <h3 className="mt-4 mb-3">Upload Dataset Files</h3>
+        <h3 className="mt-4 mb-3">Upload Dataset File (CSV)</h3>
         <div className="mb-3">
-          <label htmlFor="x_cat_train" className="form-label">X_cat_train.npy (Optional)</label>
+          <label htmlFor="data_file" className="form-label">Select CSV File</label>
           <input
             type="file"
             className="form-control"
-            id="x_cat_train"
-            name="x_cat_train"
+            id="data_file"
+            name="data_file"
             onChange={handleFileChange}
-            accept=".npy"
-          />
-        </div>
-        <div className="mb-3">
-          <label htmlFor="x_num_train" className="form-label">X_num_train.npy (Optional)</label>
-          <input
-            type="file"
-            className="form-control"
-            id="x_num_train"
-            name="x_num_train"
-            onChange={handleFileChange}
-            accept=".npy"
-          />
-        </div>
-        <div className="mb-3">
-          <label htmlFor="y_train" className="form-label">y_train.npy (Optional)</label>
-          <input
-            type="file"
-            className="form-control"
-            id="y_train"
-            name="y_train"
-            onChange={handleFileChange}
-            accept=".npy"
-          />
-        </div>
-        <div className="mb-3">
-          <label htmlFor="domain_json" className="form-label">domain.json</label>
-          <input
-            type="file"
-            className="form-control"
-            id="domain_json"
-            name="domain_json"
-            onChange={handleFileChange}
-            accept=".json"
+            accept=".csv"
             required
           />
         </div>
         <div className="mb-3">
-          <label htmlFor="info_json" className="form-label">info.json</label>
+          <label htmlFor="target_column" className="form-label">Target Column Name (e.g., y_attr)</label>
           <input
-            type="file"
+            type="text"
             className="form-control"
-            id="info_json"
-            name="info_json"
-            onChange={handleFileChange}
-            accept=".json"
-            required
+            id="target_column"
+            name="target_column"
+            value={formData.target_column}
+            onChange={handleChange}
           />
         </div>
 
