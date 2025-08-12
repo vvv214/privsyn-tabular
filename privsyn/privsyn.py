@@ -21,12 +21,12 @@ from privsyn.lib_synthesize.update_config import UpdateConfig
 from privsyn.lib_dataset.dataset import Dataset
 from privsyn.lib_marginal.marg import Marginal
 from privsyn.lib_marginal.consistent import Consistenter
-from privsyn.lib_composition.advanced_composition import AdvancedComposition
 from privsyn.lib_marginal.marg_determine import marginal_selection, marginal_combine
 from privsyn.lib_marginal.filter import Filter
 from privsyn.lib_dataset.data_store import DataStore
 from privsyn.lib_dataset.domain import Domain
 from privsyn.lib_synthesize.GUM import GUM_Mechanism
+from util.rho_cdp import cdp_rho
 
 from functools import reduce
 

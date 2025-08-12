@@ -10,7 +10,7 @@ class Marginal:
                         for attr in marg_domain.attrs]] = 1
         self.num_categories = np.array(dataset_domain.shape)
 
-        self.attributes_index = np.nonzero(self.indicator)[0] #所有margin的attr的index
+        self.attributes_index = np.nonzero(self.indicator)[0] #all margin's attr's index
         self.attr_set = set(marg_domain.attrs)
 
         # self.num_key represents the number of different possible combinations in the marg
@@ -27,7 +27,7 @@ class Marginal:
         self.calculate_encode_num(self.num_categories)
 
     ########################################### general functions ####################################
-    def calculate_encode_num(self, num_categories): #将多维的组合[a,b,c]降到一维，用于计算histogram
+    def calculate_encode_num(self, num_categories): #project [a,b,c] into histogram
         if self.ways != 0:
             categories_index = self.attributes_index
 

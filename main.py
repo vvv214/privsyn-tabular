@@ -28,14 +28,6 @@ parser.add_argument("--test", action="store_true")
 parser.add_argument("--syn_test", action="store_true")
 args = parser.parse_args()
 
-if args.sample_device is None:
-    args.sample_device = args.device
-
-if args.method in ['rap', 'rap_syn'] and args.dataset in ['loan', 'higgs-small']:
-    os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = "false"
-    os.environ["XLA_PYTHON_CLIENT_ALLOCATOR"]="platform"
-    os.environ["JAX_TRACEBACK_FILTERING"] = "off"
-
 
 def main(args):
     print(f'privacy setting: ({args.epsilon}, {args.delta})')
@@ -43,22 +35,15 @@ def main(args):
     time_record = {}
 
     # data preprocess
-    if args.method == 'ddpm':
-        total_rho = 1.0 # not used, set to 1.0 to calculate preprocesser_divide
-        data_preprocesser = data_preprocesser_common(args)
-        df, domain, preprocesser_divide  = data_preprocesser.load_data(data_path, 0)
-    else:
-        total_rho = cdp_rho(args.epsilon, args.delta)
-        data_preprocesser = data_preprocesser_common(args)
-        df, domain, preprocesser_divide  = data_preprocesser.load_data(data_path, total_rho) 
+    total_rho = cdp_rho(args.epsilon, args.delta)
+    data_preprocesser = data_preprocesser_common(args)
+    df, domain, preprocesser_divide  = data_preprocesser.load_data(data_path, total_rho) 
     
-
     # fitting model
     start_time = time.time()
     generator_dict = algo_method(args)(args, df=df, domain=domain, rho=(1-preprocesser_divide)*total_rho, parent_dir=parent_dir, preprocesser = data_preprocesser)
     end_time = time.time()
     time_record['model fitting time'] = end_time-start_time
-
 
     # evaluation
     eval_config = prepare_eval_config(args, parent_dir)

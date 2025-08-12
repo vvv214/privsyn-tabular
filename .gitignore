@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environment
+.venv/
+virtualenv/
+env/
+
+# IDEs
+.vscode/
+.idea/
+
+# OS generated files
+.DS_Store
+.Trashes
+Thumbs.db
+
+# Logs and temporary files
+*.log
+*.tmp
+
+# Data and experiment outputs (if not meant to be version controlled)
+data/
+exp/
+temp_synthesis_output/
+
+# Frontend build output
+frontend/dist/
+frontend/node_modules/
+
+# Backend static files (if copied from frontend build)
+web_app/static/
