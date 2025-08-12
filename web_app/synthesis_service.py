@@ -6,7 +6,7 @@ import json
 import math
 import copy
 import shutil
-from typing import Dict, Any
+from typing import Dict, Any, Tuple
 
 # Add the project root to the sys.path to allow importing project modules
 # Assuming the project root is two levels up from this file (web_app/synthesis_service.py)
@@ -15,7 +15,7 @@ sys.path.insert(0, project_root)
 
 # Import necessary modules from the main project
 from privsyn.privsyn import privsyn_main, add_default_params
-from preprocess_common.load_data_common import data_preprocessor_common # Corrected class name
+from preprocess_common.load_data_common import data_preprocessor_common
 from util.rho_cdp import cdp_rho
 from privsyn.lib_dataset.dataset import Dataset
 from privsyn.lib_dataset.domain import Domain
@@ -41,7 +41,7 @@ async def run_synthesis(
     device: str = "cpu", # Default device, can be passed from frontend
     sample_device: str = "cpu", # Default sample device
     # Add other parameters that might be needed for `args`
-) -> pd.DataFrame:
+) -> Tuple[str, str]: # Returns path to synthesized CSV and path to original preprocessed data dir
     """
     Runs the data synthesis process using the PrivSyn logic.
 
@@ -59,7 +59,7 @@ async def run_synthesis(
         sample_device (str): Device to use for sampling.
 
     Returns:
-        pd.DataFrame: The synthesized DataFrame.
+        Tuple[str, str]: Path to the synthesized CSV file and path to the original preprocessed data directory.
     """
     print(f"Starting synthesis with method: {method}, dataset: {dataset_name}, epsilon: {epsilon}")
 
@@ -108,8 +108,6 @@ async def run_synthesis(
     total_rho = cdp_rho(args.epsilon, args.delta)
 
     # 5. Instantiate data_preprocessor_common and load data
-    # The data_preprocessor_common expects a path to load data from.
-    # We pass the temporary directory where we saved the uploaded files.
     data_preprocesser = data_preprocessor_common(args)
     df_processed, domain_processed, preprocesser_divide = data_preprocesser.load_data(temp_data_dir + '/', total_rho)
 
@@ -124,11 +122,10 @@ async def run_synthesis(
     # 8. Call privsyn_generator.syn
     privsyn_generator.syn(n_sample, data_preprocesser, temp_output_dir)
 
-    # 9. Retrieve synthesized_df
+    # 9. Retrieve synthesized_df and save to CSV
     synthesized_df = privsyn_generator.synthesized_df
+    synthesized_csv_path = os.path.join(temp_output_dir, f"{dataset_name}_synthesized.csv")
+    synthesized_df.to_csv(synthesized_csv_path, index=False)
 
-    # 10. Clean up temporary directories (optional, but good practice)
-    # shutil.rmtree(temp_data_dir)
-    # shutil.rmtree(temp_output_dir) # Keep this for debugging if needed
-
-    return synthesized_df
+    # 10. Return paths to synthesized CSV and original preprocessed data dir
+    return synthesized_csv_path, temp_data_dir
