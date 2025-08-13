@@ -1,5 +1,4 @@
 #!/bin/bash
-# Script to start the FastAPI backend
 
 # Activate the virtual environment
 source .venv/bin/activate

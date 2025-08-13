@@ -11,3 +11,4 @@ tomli
 tomli_w
 category_encoders
 gunicorn
+psutil

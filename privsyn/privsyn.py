@@ -60,35 +60,23 @@ class PrivSyn():
         
 
     def marginal_selection(self):
-        '''
-        This method consists of two steps:
-            1. select two-way marginals and combine them
-
-            2. construct all marginals (one-way and multi-way marginals) into `Marginal` class
-               measure and introduce DP noise to all measured marginals
-        '''
+        self.logger.info("Starting marginal selection.")
         self.sel_marg_name = self.select_and_combine_marginals(self.original_dataset)
         self.one_way_marg_dict = self.construct_margs(mode = 'one_way') 
         self.combined_marg_dict = self.construct_margs(mode = 'combined')
+        self.logger.info("Finished marginal selection.")
 
     
 
     def syn(self, n_sample, preprocesser, parent_dir, **kwargs):
-        '''
-        This method is the main synthesis process of PrivSyn:
-            1. initialize a GUM class, requiring: 
-                dataset (in Dataset class)
-                dictionary of multi-way marginals {(attr1, attr2): Marginal, (attr2, attr3): Marginal, ...} 
-                dictionary of one-way marginals {(attr1,): Marginal, (attr2,): Marginal, ...}
-
-            2. run GUM, achieved by two steps: consistency + updation 
-
-            3. postprocess the synthesized dataset and save it in parent_dir
-        '''
+        self.logger.info(f"Starting synthesis for {n_sample} samples.")
         self.model = GUM_Mechanism(self.args, self.original_dataset, self.combined_marg_dict, self.one_way_marg_dict)
+        self.logger.info("GUM_Mechanism initialized. Running GUM model.")
         self.synthesized_df = self.model.run(n_sample)
         print(f"Synthesized DF min: {self.synthesized_df.min().min()}, max: {self.synthesized_df.max().max()}")
+        self.logger.info("GUM model run complete. Starting postprocessing.")
         self.postprocessing(preprocesser, parent_dir)
+        self.logger.info("Finished synthesis.")
 
 
 
