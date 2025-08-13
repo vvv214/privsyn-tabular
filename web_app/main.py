@@ -10,12 +10,24 @@ import pandas as pd
 import numpy as np
 import json
 import importlib # For dynamic import of evaluation scripts
+from .data_comparison import calculate_tvd_metrics
 import sys # For sys.path modification
 from fastapi.staticfiles import StaticFiles
+
+import psutil # For memory monitoring
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+def log_memory_usage(stage: str):
+    process = psutil.Process(os.getpid())
+    mem_info = process.memory_info()
+    # RSS (Resident Set Size) is the non-swapped physical memory a process has used.
+    # VMS (Virtual Memory Size) is the total virtual memory used by the process.
+    logger.info(f"Memory usage at {stage}: RSS={mem_info.rss / (1024 * 1024):.2f} MB, VMS={mem_info.vms / (1024 * 1024):.2f} MB")
+
+
 
 # Add the project root to the sys.path to allow importing project modules
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -29,7 +41,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Temporarily allow all origins for debugging CORS
+    allow_origins=["http://localhost:5173", "http://localhost:5174", "https://www.privsyn.com"],  # Allow your frontend origin
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -82,6 +94,7 @@ async def synthesize_data(
     and returns the inferred metadata for user confirmation.
     """
     logger.info(f"Entering synthesize_data endpoint. Dataset: {dataset_name}, Method: {method}")
+    log_memory_usage("synthesize_data_start")
     if dataset_name == "debug_dataset":
         logger.info("Debug mode: Bypassing data inference and returning dummy metadata.")
         unique_id = str(uuid.uuid4())
@@ -89,7 +102,10 @@ async def synthesize_data(
             "df": pd.DataFrame(np.random.rand(10, 5)), # Dummy DataFrame
             "X_cat": np.array([["A", "B"], ["C", "D"]]), # Dummy X_cat
             "X_num": np.array([[1.0, 2.0], [3.0, 4.0]]), # Dummy X_num
-            "domain_data": {"num_attr_1": 10, "cat_attr_1": 5}, # Dummy domain_data
+            "domain_data": {
+                "num_col_1": {"type": "numerical", "size": 10},
+                "cat_col_1": {"type": "categorical", "size": 5}
+            }, # Dummy domain_data
             "info_data": {"name": "debug_dataset"}, # Dummy info_data
             "target_column": target_column,
             "synthesis_params": {
@@ -112,6 +128,8 @@ async def synthesize_data(
             }
         }
         logger.info(f"synthesize_data populated inferred_data_temp_storage with unique_id: {unique_id}, dataset_name: {dataset_name}")
+        logger.info(f"Domain data sent to frontend: {inferred_data_temp_storage[unique_id]["domain_data"]}")
+        logger.info(f"Info data sent to frontend: {inferred_data_temp_storage[unique_id]["info_data"]}")
         return JSONResponse(content={
             "message": "Metadata inferred. Please confirm.",
             "unique_id": unique_id,
@@ -125,19 +143,44 @@ async def synthesize_data(
         # 1. Load the uploaded file into a DataFrame
         logger.info("Attempting to load dataframe from uploaded file.")
         df = load_dataframe_from_uploaded_file(data_file)
+        log_memory_usage("synthesize_data_after_df_load")
         logger.info(f"DataFrame loaded. Shape: {df.shape}")
 
         # 2. Infer data metadata
         logger.info("Attempting to infer data metadata.")
         inferred_data = infer_data_metadata(df, target_column=target_column)
+        log_memory_usage("synthesize_data_after_metadata_inference")
         logger.info("Data metadata inferred successfully.")
 
         # Store original df and y temporarily with a unique ID
         unique_id = str(uuid.uuid4())
+        
+        # Create a temporary directory for this unique_id
+        temp_dir = os.path.join(tempfile.gettempdir(), unique_id)
+        os.makedirs(temp_dir, exist_ok=True)
+
+        # Save df to a temporary parquet file
+        df_path = os.path.join(temp_dir, "df.parquet")
+        df.to_parquet(df_path, index=False)
+        logger.info(f"Saved df to {df_path}")
+
+        # Save X_cat and X_num to temporary npy files if they exist
+        X_cat_path = None
+        if inferred_data['X_cat'] is not None:
+            X_cat_path = os.path.join(temp_dir, "X_cat.npy")
+            np.save(X_cat_path, inferred_data['X_cat'])
+            logger.info(f"Saved X_cat to {X_cat_path}")
+
+        X_num_path = None
+        if inferred_data['X_num'] is not None:
+            X_num_path = os.path.join(temp_dir, "X_num.npy")
+            np.save(X_num_path, inferred_data['X_num'])
+            logger.info(f"Saved X_num to {X_num_path}")
+
         inferred_data_temp_storage[unique_id] = {
-            "df": df,
-            "X_cat": inferred_data['X_cat'],
-            "X_num": inferred_data['X_num'],
+            "df_path": df_path,
+            "X_cat_path": X_cat_path,
+            "X_num_path": X_num_path,
             "domain_data": inferred_data['domain_data'],
             "info_data": inferred_data['info_data'],
             "target_column": target_column,
@@ -158,9 +201,11 @@ async def synthesize_data(
                 "update_rate_method": update_rate_method,
                 "update_rate_initial": update_rate_initial,
                 "update_iterations": update_iterations,
-            }
+            },
+            "temp_dir": temp_dir # Store the temporary directory path for cleanup
         }
         logger.info(f"synthesize_data populated inferred_data_temp_storage with unique_id: {unique_id}, dataset_name: {dataset_name}")
+        log_memory_usage("synthesize_data_before_return")
         return JSONResponse(content={
             "message": "Metadata inferred. Please confirm.",
             "unique_id": unique_id,
@@ -194,6 +239,7 @@ async def confirm_synthesis(
     confirmed_info_data: str = Form(...),   # JSON string of info.json content
 ):
     logger.info(f"confirm_synthesis received dataset_name: {dataset_name}")
+    log_memory_usage("confirm_synthesis_start")
     """
     Receives confirmation of inferred metadata and proceeds with data synthesis.
     """
@@ -201,7 +247,22 @@ async def confirm_synthesis(
         raise HTTPException(status_code=404, detail="Inferred data not found or session expired. Please re-upload.")
 
     temp_data = inferred_data_temp_storage.pop(unique_id) # Retrieve and remove from temp storage
-    df = temp_data["df"]
+    df_path = temp_data["df_path"]
+    X_cat_path = temp_data["X_cat_path"]
+    X_num_path = temp_data["X_num_path"]
+    temp_dir = temp_data["temp_dir"]
+
+    # Load df from temporary parquet file
+    df = pd.read_parquet(df_path)
+    logger.info(f"Loaded df from {df_path}")
+    log_memory_usage("confirm_synthesis_after_df_load")
+
+    # Load X_cat and X_num from temporary npy files if they exist
+    X_cat = np.load(X_cat_path, allow_pickle=True) if X_cat_path else None
+    if X_cat_path: logger.info(f"Loaded X_cat from {X_cat_path}")
+    X_num = np.load(X_num_path, allow_pickle=True) if X_num_path else None
+    if X_num_path: logger.info(f"Loaded X_num from {X_num_path}")
+
     target_column = temp_data["target_column"]
     synthesis_params = temp_data["synthesis_params"] # Retrieve synthesis parameters
 
@@ -210,25 +271,44 @@ async def confirm_synthesis(
     info_data = json.loads(confirmed_info_data)
 
     try:
-        # Create a persistent directory for this synthesis run
+        # Create a persistent directory for this synthesis run (still needed for synthesized_csv_path)
         synthesis_run_dir = os.path.join(project_root, "temp_synthesis_output", "runs", unique_id)
         os.makedirs(synthesis_run_dir, exist_ok=True)
 
-        # Save the data and metadata
-        X_cat = temp_data["X_cat"]
-        X_num = temp_data["X_num"]
-        
-        if X_cat is not None:
-            np.save(os.path.join(synthesis_run_dir, "X_cat_test.npy"), X_cat)
-            np.save(os.path.join(synthesis_run_dir, "X_cat_train.npy"), X_cat)
-        if X_num is not None:
-            np.save(os.path.join(synthesis_run_dir, "X_num_test.npy"), X_num)
-            np.save(os.path.join(synthesis_run_dir, "X_num_train.npy"), X_num)
-
+        # Write domain.json and info.json to disk for run_synthesis
         with open(os.path.join(synthesis_run_dir, "domain.json"), "w") as f:
             json.dump(domain_data, f, indent=4)
         with open(os.path.join(synthesis_run_dir, "info.json"), "w") as f:
             json.dump(info_data, f, indent=4)
+
+        # Construct original_df from in-memory data
+        df_parts = []
+        
+        num_col_names = [col for col in domain_data if domain_data[col]['type'] == 'numerical']
+        if X_num is not None and num_col_names:
+            if len(num_col_names) == X_num.shape[1]:
+                df_parts.append(pd.DataFrame(X_num, columns=num_col_names))
+            else:
+                logger.error(f"Mismatch in numerical columns during original_df construction: domain.json has {len(num_col_names)}, X_num has {X_num.shape[1]}")
+                df_parts.append(pd.DataFrame(X_num, columns=[f'num_col_{i}' for i in range(X_num.shape[1])]))
+
+        cat_col_names = [col for col in domain_data if domain_data[col]['type'] == 'categorical']
+        if X_cat is not None and cat_col_names:
+            if len(cat_col_names) == X_cat.shape[1]:
+                df_parts.append(pd.DataFrame(X_cat, columns=cat_col_names))
+            else:
+                logger.error(f"Mismatch in categorical columns during original_df construction: domain.json has {len(cat_col_names)}, X_cat has {X_cat.shape[1]}")
+                df_parts.append(pd.DataFrame(X_cat, columns=[f'cat_col_{i}' for i in range(X_cat.shape[1])]))
+
+        if not df_parts:
+            raise ValueError("No numerical or categorical data found to construct original_df.")
+
+        # Concatenate parts, ensuring column order based on domain.json
+        all_domain_cols_ordered = list(domain_data.keys())
+        combined_df = pd.concat(df_parts, axis=1)
+        final_columns = [col for col in all_domain_cols_ordered if col in combined_df.columns]
+        original_df = combined_df[final_columns]
+        logger.info(f"Successfully constructed in-memory original_df with shape: {original_df.shape}")
 
         # Prepare arguments for run_synthesis
         args_dict = {
@@ -254,20 +334,23 @@ async def confirm_synthesis(
             "sample_device": "cpu", # Default for synthesis
         }
         args = Args(**args_dict)
+        log_memory_usage("confirm_synthesis_before_run_synthesis")
 
         # Run synthesis
-        synthesized_csv_path, original_data_dir_for_eval = await run_synthesis(
+        synthesized_csv_path, _ = await run_synthesis( # original_data_dir_for_eval is no longer needed
             args=args,
-            data_dir=synthesis_run_dir,
+            data_dir=synthesis_run_dir, # data_dir is still needed for synthesis output
+            X_num_raw=X_num,
+            X_cat_raw=X_cat,
             confirmed_domain_data=domain_data,
             confirmed_info_data=info_data
         )
 
-        # Store paths for evaluation
+        # Store data for evaluation
         logger.info(f"Populating data_storage for dataset: {dataset_name}")
         data_storage[dataset_name] = {
             "synthesized_csv_path": synthesized_csv_path,
-            "original_data_dir": original_data_dir_for_eval, # Store the actual original data dir returned by run_synthesis
+            "original_df": original_df, # Store original_df directly
             "method": synthesis_params["method"],
             "epsilon": synthesis_params["epsilon"],
             "delta": synthesis_params["delta"],
@@ -275,11 +358,16 @@ async def confirm_synthesis(
             "rare_threshold": synthesis_params["rare_threshold"],
         }
         logger.info(f"Current data_storage keys: {data_storage.keys()}")
+        log_memory_usage("confirm_synthesis_before_return")
 
         return JSONResponse(content={"message": "Data synthesis initiated successfully!", "dataset_name": dataset_name})
     except Exception as e:
         logger.exception("Error during synthesis confirmation.")
         raise HTTPException(status_code=500, detail=f"Synthesis failed: {str(e)}")
+    finally:
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
+            logger.info(f"Cleaned up temporary directory: {temp_dir}")
 
 @app.get("/download_synthesized_data/{dataset_name}")
 async def download_synthesized_data(dataset_name: str):
@@ -302,8 +390,8 @@ async def download_synthesized_data(dataset_name: str):
 @app.post("/evaluate")
 async def evaluate_data_fidelity(
     dataset_name: str = Form(...),
-    evaluation_methods: str = Form(...), # Comma-separated string of methods
 ):
+    logger.debug(f"sys.path: {sys.path}")
     """
     Triggers evaluation of synthesized data fidelity using selected methods.
     """
@@ -312,62 +400,25 @@ async def evaluate_data_fidelity(
 
     data_info = data_storage[dataset_name]
     synthesized_csv_path = data_info["synthesized_csv_path"]
-    original_data_dir = data_info["original_data_dir"]
-    selected_methods = [m.strip() for m in evaluation_methods.split(',')]
+    original_df = data_info["original_df"] # Access original_df directly
 
     if not os.path.exists(synthesized_csv_path):
         raise HTTPException(status_code=404, detail="Synthesized data file not found for evaluation.")
-    if not os.path.exists(original_data_dir):
-        raise HTTPException(status_code=404, detail="Original preprocessed data not found for evaluation.")
+    # No need to check for original_data_dir existence anymore as original_df is in memory
 
     results = {}
-    old_stdout = sys.stdout # Initialize old_stdout before the loop
-    # Create a dummy args object for evaluation scripts
-    eval_args_dict = {
-        "method": data_info["method"],
-        "dataset": dataset_name, # Use dataset_name as dataset arg for eval scripts
-        "epsilon": data_info["epsilon"],
-        "delta": data_info["delta"],
-        "num_preprocess": data_info["num_preprocess"],
-        "rare_threshold": data_info["rare_threshold"],
-        "test": True, # Evaluation scripts are typically run in test mode
-        "syn_test": False, # Not a synthesis test
-        "device": "cpu", # Default for evaluation
-        "sample_device": "cpu", # Default for evaluation
-    }
-    eval_args = Args(**eval_args_dict)
 
-    # Dynamically import and run evaluation scripts
-    for method_name in selected_methods:
-        try:
-            module_path = f"evaluator.{method_name}"
-            logger.info(f"Calling evaluation module: {module_path}")
-            if module_path in sys.modules: del sys.modules[module_path] # Clear cache for fresh import
-            eval_module = importlib.import_module(module_path)
+    try:
+        logger.info("Calculating TVD metrics...")
+        # original_df is already available
+        synthesized_df = pd.read_csv(synthesized_csv_path)
 
-            old_stdout = sys.stdout
-            redirected_output = io.StringIO()
-            sys.stdout = redirected_output
+        tvd_results = calculate_tvd_metrics(original_df, synthesized_df)
+        results["tvd_metrics"] = tvd_results
+        logger.info("TVD metrics calculated successfully.")
+    except Exception as e:
+        logger.exception(f"Error calculating TVD metrics: {e}")
+        results["tvd_metrics"] = f"Error: Failed to calculate TVD metrics. Details: {str(e)}"
 
-            if hasattr(eval_module, 'main'):
-                logger.info(f"Executing main function of {method_name} evaluation module.")
-                eval_module.main(eval_args, original_data_dir, synthesized_csv_path) # This line is the speculative call
-            else:
-                logger.warning(f"Evaluation module '{method_name}' does not have a 'main' function.")
-                raise AttributeError(f"Evaluation module '{method_name}' does not have a 'main' function.")
-
-            results[method_name] = redirected_output.getvalue()
-
-        except ModuleNotFoundError:
-            logger.error(f"Evaluation method '{method_name}' not found.")
-            results[method_name] = f"Error: Evaluation method '{method_name}' not found."
-        except AttributeError as e:
-            logger.error(f"Attribute error in {method_name}: {e}")
-            results[method_name] = f"Error: {e}. Module '{method_name}' might not have the expected 'main' function or its signature is incorrect."
-        except Exception as e:
-            logger.exception(f"Error running {method_name}.")
-            results[method_name] = f"Error running {method_name}: {str(e)}"
-        finally:
-            sys.stdout = old_stdout # Restore stdout
 
     return JSONResponse(content={"message": "Evaluation complete.", "results": results})

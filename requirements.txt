@@ -1,12 +1,11 @@
 fastapi
 uvicorn[standard]
 pandas
-numpy==1.26.4
+numpy
 python-multipart
 networkx
 tqdm
-scikit-learn
-matplotlib
+pyarrow
 
 tomli
 tomli_w

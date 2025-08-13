@@ -69,12 +69,12 @@ def infer_data_metadata(df: pd.DataFrame, target_column: str = 'y_attr') -> dict
             num_feature_count += 1
             X_num_cols.append(col)
             # For domain.json, use nunique for numerical as per bank example
-            domain_data[f"num_attr_{num_feature_count}"] = df[col].nunique()
+            domain_data[col] = {"type": "numerical", "size": df[col].nunique()}
         else:
             # Treat as categorical (strings, objects, or numerical with few unique values)
             cat_feature_count += 1
             X_cat_cols.append(col)
-            domain_data[f"cat_attr_{cat_feature_count}"] = df[col].nunique()
+            domain_data[col] = {"type": "categorical", "size": df[col].nunique()}
 
     info_data["n_num_features"] = num_feature_count
     info_data["n_cat_features"] = cat_feature_count

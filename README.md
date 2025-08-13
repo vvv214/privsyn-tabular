@@ -1,38 +1,3 @@
-# PrivSyn
-
-This repository is an implementation of paper [PrivSyn: Differentially Private Data Synthesis](https://www.usenix.org/system/files/sec21fall-zhang-zhikun.pdf). 
-
-## Introducion
-The pipeline of the PrivSyn consists of three functional modules: data preprocessing, PrivSyn main process, and synthesis evaluation. The file structure can be summarized as follows.
-* `data/`: used for save raw data.
-* `preprocess_common/`: code for data preprocessing.
-* `privsyn/`: code for the main procedure of PrivSyn.
-* `evaluator/`: code for evaluation.
-* `eval_models/`: this file stores the settings of evaluation models.
-* `util/`: code for some helper functions.
-* `exp/`: the results of experiments will be collected and save in this file. 
-
-
-## Quick Start
-### Hyper-paprameters
-The code for running experiments is in `main.py`. The detailed description of some common hyper-parameters are give as follows.
-* `method`: which synthesis method you will run.
-* `dataset`: name of dataset.
-* `device`: the device used for running algorithms. 
-* `epsilon`: DP parameter, which must be delivered when running code. 
-* `--delta`: DP parameter, which is set to $1e-5$ by default.
-* `--num_preprocess`: preprocessing method for numerical attributes, which is set to uniform binning by default. 
-* `--rare_threshold`: threshold of preprocessing method for categorical attributes, which is set to $0.2\%$ by default.
-* `--sample_device`: device used for sample data, by default is set to the same as running device.
-There are some other hyper-paramters specifically for PrivSyn main procedure in file `privsyn/privsyn.py`. We recommend using default values for these hyper-parameters.
-
-### Run PrivSyn
-Firstly, make sure the datasets are put in the correct fold (in the following examples, the fold is `data/bank`, and the necessary dataset has already been provided). In this repository, the evaluation model is already tuned so users do not need any operation. Otherwise, you should tune the evaluation model (using the following code) before any further operation. For instance, you can finetune a mlp model for evaluation like
-```
-python evaluator/tune_eval_model.py bank mlp cv cuda:0
-```
-
-After preparation, we can try the following code to make an overall evaluation. Usually, we by default set `num_preprocess` to be "uniform_kbins" except for DP-MERF and TabDDPM, and set `rare_threshold` to 0.002 for overall evaluation. Therefore, if you do not want to change these settings, you do not need to include these hyper-parameters in your command line.
 # PrivSyn - Differentially Private Data Synthesis
 
 This repository implements the PrivSyn algorithm for Differentially Private Data Synthesis, as described in the paper: [PrivSyn: Differentially Private Data Synthesis](https://www.usenix.org/system/files/sec21fall-zhang-zhikun.pdf).
@@ -47,74 +12,79 @@ The PrivSyn pipeline comprises three functional modules: data preprocessing, the
 *   `evaluator/`: Provides code for evaluating synthesis results.
 *   `eval_models/`: Stores settings for evaluation models.
 *   `util/`: Contains various helper functions.
-*   `exp/`: Collects and saves experimental results.
 *   `web_app/`: FastAPI backend for the web application.
-*   `frontend/`: Vue.js frontend for the web application.
+*   `frontend/`: React.js frontend for the web application.
+*   `exp/`: Collects and saves experimental results.
 
 ## Setup
 
 To get started with PrivSyn, follow these steps:
 
-1.  **Clone the repository:**
+### 1. Local Development Setup
+
+#### Prerequisites
+*   Python 3.8+
+*   Node.js and npm (or Yarn)
+
+#### Backend Setup (Python FastAPI Application)
+
+1.  **Navigate to the project root:**
     ```bash
-    git clone https://github.com/your-repo/privsyn-tabular.git
-    cd privsyn-tabular
+    cd [path]
     ```
-
-2.  **Set up Python Environment:**
-    It's highly recommended to use a virtual environment to manage dependencies.
-
+2.  **Create a virtual environment:**
     ```bash
-    # Create a virtual environment
     python3 -m venv .venv
-
-    # Activate the virtual environment
-    source .venv/bin/activate
-
-    # Install Python dependencies
-    pip install -r requirements.txt
     ```
+3.  **Activate the virtual environment:**
+    *   On macOS/Linux:
+        ```bash
+        source .venv/bin/activate
+        ```
+    *   On Windows:
+        ```bash
+        .venv\Scripts\activate
+        ```
+4.  **Install Python dependencies:**
+    ```bash
+    pip install -r requirements.txt
+    pip install psutil  # For memory monitoring
+    ```
+5.  **Run the FastAPI backend server:**
+    Ensure your virtual environment is activated.
+    ```bash
+    uvicorn web_app.main:app --reload --port 8001
+    ```
+    The backend will typically run on `http://localhost:8001`.
 
-3.  **Set up Frontend Environment:**
-    Navigate to the `frontend` directory and install Node.js dependencies.
+#### Frontend Setup (React.js Application)
 
+1.  **Open a new terminal window.**
+2.  **Navigate to the frontend directory:**
     ```bash
     cd frontend
-    npm install # or yarn install
-    cd ..
     ```
+3.  **Install Node.js dependencies:**
+    ```bash
+    npm install
+    ```
+4.  **Run the frontend development server:**
+    ```bash
+    npm run dev -- --port 5174
+    ```
+    The frontend will typically run on `http://localhost:5174` (or another port as indicated by Vite).
 
-## Running the Application
+#### Memory Usage Monitoring (Local)
 
-This project includes both a command-line interface (CLI) for research/evaluation and a web-based application.
+When running the backend locally, you can observe memory peak usage in the terminal where the `uvicorn` server is running. We've added logging statements to `web_app/main.py` to output memory usage at key stages.
 
-### 1. Running the Backend (Web Application API)
-
-The backend is a FastAPI application.
-
-```bash
-# Ensure your Python virtual environment is activated
-source .venv/bin/activate
-
-# Start the backend server
-./start_backend.sh
+Example log output:
 ```
-The backend will typically run on `http://127.0.0.1:8001`.
-
-### 2. Running the Frontend (Web User Interface)
-
-The frontend is a Vue.js application.
-
-```bash
-# Navigate to the frontend directory
-cd frontend
-
-# Start the frontend development server
-./start_frontend.sh
+Memory usage at synthesize_data_start: RSS=XX.XX MB, VMS=YY.YY MB
 ```
-The frontend will typically run on `http://localhost:5173` (or another port as indicated by Vite).
+This helps in identifying memory-intensive operations.
 
-### 3. Running PrivSyn via CLI (for Research/Evaluation)
+### 2. Running PrivSyn via CLI (for Research/Evaluation)
 
 The `main.py` script provides a command-line interface for running PrivSyn experiments.
 
@@ -141,79 +111,60 @@ To run an overall evaluation with PrivSyn:
 python main.py privsyn bank cuda:0 1.0
 ```
 
+## Deployment
+
+This section outlines the deployment process for the PrivSyn web application to cloud environments like Render (for backend) and Vercel (for frontend).
+
+### Backend Deployment (Render)
+
+The backend is a FastAPI application deployed on Render.
+
+1.  **Service Type:** Web Service
+2.  **Build Command:** (Usually auto-detected, or `pip install -r requirements.txt`)
+3.  **Start Command:**
+    ```bash
+    gunicorn web_app.main:app --workers 1 --worker-class uvicorn.workers.UvicornWorker
+    ```
+    *Explanation:* FastAPI is an ASGI application. Gunicorn is a WSGI server but can manage ASGI applications using `uvicorn.workers.UvicornWorker`. This setup provides robust process management and load balancing for production.
+4.  **Environment Variables:**
+    *   No specific environment variables are required for the backend itself, but ensure any database credentials or other sensitive information are configured as environment variables on Render.
+5.  **Memory Considerations:**
+    *   The application can be memory-intensive, especially when processing large datasets. If you encounter "Ran out of memory" errors, consider:
+        *   **Optimizing data handling:** The application has been modified to use temporary files for intermediate data storage between `/synthesize` and `/confirm_synthesis` calls to reduce memory footprint.
+        *   **Reducing `n_sample`:** In the frontend, try reducing the "Number of Samples" (`n_sample`) parameter.
+        *   **Upgrading Render Plan:** If memory issues persist, you may need to upgrade your Render plan to one with higher memory limits.
+
+### Frontend Deployment (Vercel)
+
+The frontend is a React.js application built with Vite, deployed on Vercel.
+
+1.  **Framework Preset:** Vite
+2.  **Build Command:** `npm run build`
+3.  **Output Directory:** `dist` (usually auto-detected)
+4.  **Environment Variables:**
+    *   **`VITE_API_BASE_URL`**: This crucial environment variable tells the frontend where your backend API is located.
+        *   **Value:** Set this to the URL of your deployed backend (e.g., `https://privsyn-tabular.onrender.com`).
+        *   **Important:** Ensure this variable is set in Vercel's project settings under "Environment Variables". Vite requires environment variables to be prefixed with `VITE_` to be exposed to the client-side code.
+5.  **CORS Configuration:**
+    *   The backend (FastAPI) is configured with `CORSMiddleware` to allow cross-origin requests from your frontend.
+    *   In `web_app/main.py`, the `allow_origins` list should include your frontend's domain (e.g., `https://www.privsyn.com`).
+    *   If you encounter CORS errors, ensure:
+        *   The backend is running the latest code with the correct `allow_origins` configuration.
+        *   There are no intermediary proxies or CDNs stripping the `Access-Control-Allow-Origin` header. (Setting `allow_origins=["*"]` temporarily can help diagnose if an external factor is interfering, but should not be used in production).
+
 ## PrivSyn Modules (Modularized API)
 
-Beyond the overall implementation, this repository offers modularized APIs for `InDif selection` and `GUM`.
-
-### InDif Selection
-This module performs marginal selection by measuring InDif. It's implemented as a static method `two_way_marginal_selection` within the `PrivSyn` class (`privsyn/privsyn.py`). It returns a list of 2-way marginal tuples.
-
-#### Parameters:
-*   `df`: A pandas DataFrame of the dataset.
-*   `domain`: A dictionary of attribute domains.
-*   `rho_indif`: Privacy budget for measuring InDif.
-*   `rho_measure`: Privacy budget for measuring selected marginals (used as an optimization term).
-
-#### Example Usage:
-```python
-from privsyn.privsyn import PrivSyn
-# Assume df, domain, rho_indif, rho_measure are defined
-selected_marginals = PrivSyn.two_way_marginal_selection(df, domain, rho_indif, rho_measure)
-```
-
-### GUM (General Update Mechanism)
-The `GUM_Mechanism` class (`privsyn/lib_synthesize/GUM.py`) provides a closed-form synthesis module.
-
-#### Initialization:
-GUM initialization requires a hyper-parameters dictionary (similar to PrivSyn), a `Dataset` class instance, a dictionary of 1-way marginals (can be empty), and a dictionary of 2-way marginals. Marginals should be `Marginal` class instances (`privsyn/lib_marginal/marg.py`), measured using `count_records`.
-
-```python
-from privsyn.lib_synthesize.GUM import GUM_Mechanism
-# Assume args, dataset, one_way_marg_dict, combined_marg_dict are defined
-model = GUM_Mechanism(args, dataset, one_way_marg_dict, combined_marg_dict)
-```
-
-#### Main Procedure:
-The `run` method executes the GUM process, including graph separation, marginal consistency, and record updates. It requires the sampling number.
-
-```python
-# Assume model is initialized
-model.run(n_sample = 10000)
-synthesized_df = model.synthesized_df
-```
-
-#### Adaptive Mechanism:
-The module also supports measurement for synthesized datasets, useful for adaptive marginal selection.
-
-```python
-# Assume model and dataset are defined
-syn_vector = model.project(('attr1', 'attr2')).datavector()
-real_vector = dataset.project(('attr1', 'attr2')).datavector()
-gap = np.linalg.norm(syn_vector - real_vector, ord=1)
-```
-
-## Deployment Considerations
-
-For deploying the PrivSyn web application to a cloud environment, consider the following:
-
-*   **Environment Variables:** Configure environment variables for sensitive information or configurable parameters (e.g., API keys, database connections, port numbers).
-*   **Production Build:** For the frontend, create a production build (`npm run build` in the `frontend` directory) which generates optimized static assets. These assets can then be served by a web server (e.g., Nginx, Apache) or integrated directly into the backend.
-*   **Process Management:** Use a production-ready WSGI server for the Python backend (e.g., Gunicorn, uWSGI) instead of `uvicorn --reload`. A process manager like PM2 (for Node.js) or systemd (for Linux) can manage the backend and frontend processes.
-*   **Containerization:** Consider using Docker to containerize both the backend and frontend applications for easier deployment and scalability across different environments.
-*   **Data Storage:** Ensure your cloud environment provides suitable persistent storage for your `data/` and `exp/` directories if they need to persist across deployments or instances.
-
-## PrivSyn Modules
-Except for an overall implementation of PrivSyn, this repository also offers the modularized API of PrivSyn, which are `InDif selection` and `GUM`. 
+Beyond an overall implementation of PrivSyn, this repository also offers the modularized API of PrivSyn, which are `InDif selection` and `GUM`.
 
 ### InDif selection
-This is a method for marginal selection by measuring InDif. We implement it as a static method in `PrivSyn` class, called `two_way_marginal_selection` (see `privsyn/privsyn.py`). This method will return a list of 2-way marginal tuple, as the final selection. The hypermeters of this method can be summarized as 
+This is a method for marginal selection by measuring InDif. We implement it as a static method in `PrivSyn` class, called `two_way_marginal_selection` (see `privsyn/privsyn.py`). This method will return a list of 2-way marginal tuple, as the final selection. The hypermeters of this method can be summarized as
 * `df`: a dataframe of dataset
 * `domain`: a dictionary of attributes domain
 * `rho_indif`: privacy budget for measuring InDif
 * `rho_measure`: privacy budget for measuring selected marginals (actually this budget will not be used in this phase, but works as an optimization term during selection)
 
 You can use this static method to select marginals for other synthesis modules
-```
+```python
 selected_marginals = PrivSyn.two_way_marginal_selection(df, domain, rho_indif, rho_measure)
 ```
 
@@ -225,22 +176,21 @@ We construct a class of GUM synthesis method called `GUM_Mechanisms` (see `privs
     {'(attr1, attr2)': Marginal1, '(attr3, attr4)': Marginal2, ...}
     ```
 
-    Here `Marginal1` and `Marginal2` should be in Marginal class (see `privsyn/lib_marginal/marg.py`), and measured by method `count_records`. You can initialize a GUM class like 
+    Here `Marginal1` and `Marginal2` should be in Marginal class (see `privsyn/lib_marginal/marg.py`), and measured by method `count_records`. You can initialize a GUM class like
 
-    ```
+    ```python
     model = GUM_Mechanism(args, df, dict1, dict2)
     ```
 
-* `Main procedure`. The main procedure of GUM is finished by method `run`, which only requires the sampling number. This process includes three main steps: graph seperation, marginal consistency, and records updation. 
-    ```
+* `Main procedure`. The main procedure of GUM is finished by method `run`, which only requires the sampling number. This process includes three main steps: graph seperation, marginal consistency, and records updation.
+    ```python
     model.run(n_sample = 10000)
     synthesized_df = model.synthesized_df
     ```
 
-* `Adaptive mechanism`. We also support measurement for synthesized dataset, which can be used for adaptive marginal selection. 
-    ```
+* `Adaptive mechanism`. We also support measurement for synthesized dataset, which can be used for adaptive marginal selection.
+    ```python
     syn_vector = model.project(('attr1', 'attr2')).datavector()
     real_vector = dataset.project(('attr1', 'attr2')).datavector()
     gap = np.linalg.norm(syn_vector - real_vector, ord=1)
     ```
-     

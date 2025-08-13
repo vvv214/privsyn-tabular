@@ -9,34 +9,17 @@ const MetadataConfirmation = ({ uniqueId, inferredDomainData, inferredInfoData, 
         setInfoData(inferredInfoData);
     }, [inferredDomainData, inferredInfoData]);
 
-    const [columnNameMap, setColumnNameMap] = useState({});
+    
 
-    useEffect(() => {
-        const map = {};
-        if (inferredInfoData) {
-            inferredInfoData.num_columns.forEach((colName, index) => {
-                map[`num_attr_${index + 1}`] = colName;
-            });
-            inferredInfoData.cat_columns.forEach((colName, index) => {
-                map[`cat_attr_${index + 1}`] = colName;
-            });
-        }
-        setColumnNameMap(map);
-    }, [inferredInfoData]);
-
-    const handleDomainChange = (key, value, subKey = null) => {
+    const handleDomainChange = (key, value, subKey = 'size') => {
         setDomainData(prev => {
-            if (subKey) { // For numerical min/max
-                return {
-                    ...prev,
-                    [key]: {
-                        ...prev[key],
-                        [subKey]: parseFloat(value) || 0
-                    }
-                };
-            } else { // For categorical
-                return { ...prev, [key]: parseInt(value) || 0 };
-            }
+            return {
+                ...prev,
+                [key]: {
+                    ...prev[key],
+                    [subKey]: parseFloat(value) || 0 // Assuming 'size' is always numerical
+                }
+            };
         });
     };
 
@@ -89,41 +72,40 @@ const MetadataConfirmation = ({ uniqueId, inferredDomainData, inferredInfoData, 
                         <div className="card-body">
                             <div className="row">
                                 {Object.entries(domainData).map(([key, value]) => {
-                                    const isNumerical = key.startsWith('num_attr_');
-                                    const labelText = columnNameMap[key] || key;
+                                    const labelText = key; // Use the actual column name as label
+                                    const isNumerical = value.type === 'numerical';
+                                    const isCategorical = value.type === 'categorical';
 
                                     return (
                                         <div className="col-md-6 mb-3 d-flex justify-content-center align-items-center flex-column" key={key}>
                                             <label htmlFor={`domain_${key}`} className="form-label">{labelText}</label>
-                                            {isNumerical ? (
+                                            {isNumerical && (
                                                 <div className="d-flex flex-row align-items-center">
-                                                    <label htmlFor={`domain_${key}_min`} className="form-label me-2">Min:</label>
+                                                    <label htmlFor={`domain_${key}_size`} className="form-label me-2">Size:</label>
                                                     <input
                                                         type="number"
-                                                        id={`domain_${key}_min`}
-                                                        className="form-control me-3"
-                                                        value={value.min || 0}
-                                                        onChange={(e) => handleDomainChange(key, e.target.value, 'min')}
-                                                    />
-                                                    <label htmlFor={`domain_${key}_max`} className="form-label me-2">Max:</label>
-                                                    <input
-                                                        type="number"
-                                                        id={`domain_${key}_max`}
+                                                        id={`domain_${key}_size`}
                                                         className="form-control"
-                                                        value={value.max || 0}
-                                                        onChange={(e) => handleDomainChange(key, e.target.value, 'max')}
+                                                        value={value.size || 0}
+                                                        onChange={(e) => handleDomainChange(key, e.target.value, 'size')}
                                                     />
                                                 </div>
-                                            ) : (
-                                                <input
-                                                    type="number"
-                                                    id={`domain_${key}`}
-                                                    className="form-control"
-                                                    value={value || 0}
-                                                    onChange={(e) => handleDomainChange(key, e.target.value)}
-                                                />
                                             )}
-                                            {!isNumerical && <small className="text-muted">Max num of categories</small>}
+                                            {isCategorical && (
+                                                <div className="d-flex flex-row align-items-center">
+                                                    <label htmlFor={`domain_${key}_size`} className="form-label me-2">Categories:</label>
+                                                    <input
+                                                        type="number"
+                                                        id={`domain_${key}_size`}
+                                                        className="form-control"
+                                                        value={value.size || 0}
+                                                        onChange={(e) => handleDomainChange(key, e.target.value, 'size')}
+                                                    />
+                                                </div>
+                                            )}
+                                            {/* Optional: Add a small text to clarify what 'size' means for each type */}
+                                            {isNumerical && <small className="text-muted">Number of unique values</small>}
+                                            {isCategorical && <small className="text-muted">Number of unique categories</small>}
                                         </div>
                                     );
                                 })}

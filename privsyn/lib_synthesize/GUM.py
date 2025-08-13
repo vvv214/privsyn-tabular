@@ -27,6 +27,7 @@ class GUM_Mechanism():
         self.marg_dict = {**self.one_way_marg_dict, **self.combined_marg_dict}
 
         self.logger = logging.getLogger('GUM')
+        self.logger.setLevel(logging.WARNING)
 
 
     def run(self, n_sample):
@@ -78,7 +79,7 @@ class GUM_Mechanism():
     def improving_convergence(self): 
         # This is for seperate attributes appending
 
-        logger = logging.getLogger("improving convergence")
+        logger = logging.getLogger("GUM.improving_convergence")
         iterate_marginals, self.clip_layers = clip_graph(logger, self.original_dataset.domain, self.sel_marg_name, enable=self.args['append'])
 
         self.logger.info("iterate_marginals after clip_graph is %s" % (iterate_marginals,))

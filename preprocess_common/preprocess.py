@@ -146,6 +146,9 @@ class discretizer():
         
         decoded_data = data.copy()
         if self.ord_encoder is not None:
+            # Clip data to valid range for OrdinalEncoder
+            for i, categories in enumerate(self.ord_encoder.categories_):
+                data[:, i] = np.clip(data[:, i], 0, len(categories) - 1)
             decoded_data = self.ord_encoder.inverse_transform(data)
 
         if len(self.columns_for_kbins) > 0:

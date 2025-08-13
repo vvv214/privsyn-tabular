@@ -15,7 +15,7 @@ function App() {
     delta: 1e-5, // Default value
     num_preprocess: 'uniform_kbins', // Default value
     rare_threshold: 0.002, // Default value
-    n_sample: 5000, // Default value
+    n_sample: 1000, // Default value
     consist_iterations: 5,
     non_negativity: 'N3',
     append: true,
@@ -42,11 +42,7 @@ function App() {
   const [inferredDomainData, setInferredDomainData] = useState(null);
   const [inferredInfoData, setInferredInfoData] = useState(null);
 
-  const evaluationMethods = [
-    'eval_catboost', 'eval_mlp', 'eval_query', 'eval_sample',
-    'eval_seeds', 'eval_simple', 'eval_transformer', 'eval_tvd'
-  ];
-  const [selectedEvaluations, setSelectedEvaluations] = useState([]);
+  
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -60,12 +56,7 @@ function App() {
     setDataFile(e.target.files[0]); // Set the single data file
   };
 
-  const handleEvaluationChange = (e) => {
-    const { value, checked } = e.target;
-    setSelectedEvaluations((prevSelected) =>
-      checked ? [...prevSelected, value] : prevSelected.filter((method) => method !== value)
-    );
-  };
+  
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -146,6 +137,7 @@ function App() {
           setSynthesizedDataHeaders(results.meta.fields || []);
           setSynthesizedDataPreview(results.data.slice(0, 10)); // Show first 10 rows
           setCurrentPage('result'); // Switch to result page
+          handleEvaluate(['query', 'tvd']); // Automatically trigger evaluation
         },
         error: (err) => {
           console.error("CSV parsing error:", err);
@@ -170,17 +162,17 @@ function App() {
     setError('');
   };
 
-  const handleEvaluate = async () => {
+  const handleEvaluate = async (methods) => {
     setMessage('Evaluating data fidelity...');
     setError('');
     setEvaluationResults({}); // Clear previous results
 
     const data = new FormData();
     data.append('dataset_name', formData.dataset_name);
-    data.append('evaluation_methods', selectedEvaluations.join(','));
+    data.append('evaluation_methods', methods.map(method => `eval_${method}`).join(','));
 
     try {
-      const response = await axios.post('${API_URL}/evaluate', data, {
+      const response = await axios.post(`${API_URL}/evaluate`, data, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -527,39 +519,6 @@ function App() {
 
               <hr className="my-4" />
 
-              <h4 className="mt-4 mb-3 text-center">Evaluate Data Fidelity</h4>
-              <div className="d-flex justify-content-center">
-                  <div className="row mb-3">
-                  {evaluationMethods.map((method) => (
-                      <div className="col-md-4" key={method}>
-                      <div className="form-check">
-                          <input
-                          className="form-check-input"
-                          type="checkbox"
-                          value={method}
-                          id={`eval-${method}`}
-                          onChange={handleEvaluationChange}
-                          checked={selectedEvaluations.includes(method)}
-                          />
-                          <label className="form-check-label" htmlFor={`eval-${method}`}>
-                            {method.replace('eval_', '').replace('_', ' ').toUpperCase()}
-                          </label>
-                      </div>
-                      </div>
-                  ))}
-                  </div>
-              </div>
-              <div className="text-center">
-                  <button
-                  type="button"
-                  className="btn btn-secondary mt-3"
-                  onClick={handleEvaluate}
-                  disabled={selectedEvaluations.length === 0}
-                  >
-                  Run Selected Evaluations
-                  </button>
-              </div>
-
               {Object.keys(evaluationResults).length > 0 && (
                 <div className="mt-4">
                   <h5 className="mb-3 text-center">Evaluation Results:</h5>
@@ -567,7 +526,7 @@ function App() {
                     <div key={method} className="card mb-3">
                       <div className="card-header bg-light">{method.replace('eval_', '').replace('_', '').toUpperCase()}</div>
                       <div className="card-body">
-                        <pre className="card-text small text-start">{result}</pre>
+                        <pre className="card-text small text-start">{JSON.stringify(result, null, 2)}</pre>
                       </div>
                     </div>
                   ))}

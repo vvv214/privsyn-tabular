@@ -87,6 +87,7 @@ class PrivSyn():
         '''
         self.model = GUM_Mechanism(self.args, self.original_dataset, self.combined_marg_dict, self.one_way_marg_dict)
         self.synthesized_df = self.model.run(n_sample)
+        print(f"Synthesized DF min: {self.synthesized_df.min().min()}, max: {self.synthesized_df.max().max()}")
         self.postprocessing(preprocesser, parent_dir)
 
 
@@ -96,8 +97,7 @@ class PrivSyn():
     
     def load_data_from_df(self, df, domain):
         self.logger.info("loading dataset %s" % (self.dataset_name,))
-        domain_list = [v for v in domain.values()]
-        domain = Domain(df.columns, domain_list)
+        domain = Domain(df.columns, domain)
         self.original_dataset = Dataset(df, domain)
         
 
@@ -221,7 +221,7 @@ class PrivSyn():
 def config_logger():
     # create logger
     logger = logging.getLogger()
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
     formatter = logging.Formatter('%(levelname)s:%(asctime)s: - %(name)s - : %(message)s')
     
     # create console handler

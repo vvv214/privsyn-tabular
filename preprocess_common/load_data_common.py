@@ -16,7 +16,7 @@ class data_preporcesser_common():
         self.args = args
         self.cat_output_type = 'one_hot' if self.args.method == 'merf' else 'ordinal'
 
-    def load_data(self, path, rho, user_domain_data: dict = None, user_info_data: dict = None):
+    def load_data(self, X_num_raw: np.ndarray, X_cat_raw: np.ndarray, rho, user_domain_data: dict = None, user_info_data: dict = None):
         # preprocesser and column info will be saved in this class
         # dataframe, domain domain, portion of rho will be returned
 
@@ -24,22 +24,17 @@ class data_preporcesser_common():
         rare_threshold = self.args.rare_threshold
         print(f'Numerical discretizer is {num_prep}')
 
-        X_num = None 
-        X_cat = None 
+        X_num = X_num_raw
+        X_cat = X_cat_raw
         domain_for_clipping = {} # Initialize domain_for_clipping 
 
         # Load domain data (either user-provided or from file)
         if user_domain_data is not None:
             domain = user_domain_data
         else:
-            domain = json.load(open(os.path.join(path, 'domain.json'))) 
-
-        if os.path.exists(os.path.join(path, 'X_num_train.npy')):
-            X_num = np.load(os.path.join(path, 'X_num_train.npy'), allow_pickle=True)
-        if os.path.exists(os.path.join(path, 'X_cat_train.npy')):
-            X_cat_raw = np.load(os.path.join(path, 'X_cat_train.npy'), allow_pickle=True)
-            # Convert to pandas DataFrame to ensure proper handling of mixed types and then to object array
-            X_cat = pd.DataFrame(X_cat_raw).astype(str).to_numpy()
+            # This path should ideally not be taken if X_num_raw and X_cat_raw are provided
+            # If it is, it means domain.json is expected from disk, which is inconsistent with in-memory data
+            raise ValueError("Domain data must be provided via user_domain_data when X_num_raw and X_cat_raw are used.")
         
         print(f"X_num shape: {X_num.shape if X_num is not None else None}")
         print(f"X_cat shape: {X_cat.shape if X_cat is not None else None}")
@@ -52,24 +47,8 @@ class data_preporcesser_common():
             else:
                 rho = cdp_rho(0.1*(num_divide+cat_divide)*1.0, 0.1*(num_divide+cat_divide)*1e-5) # this is the default value setting
     
-        if X_num is not None:
-            # Apply clipping based on user_domain_data for numerical features
-            for key, value in domain_for_clipping.items(): # Use domain_for_clipping
-                if key.startswith('num_attr_') and isinstance(value, dict) and 'min' in value and 'max' in value:
-                    try:
-                        # Extract the index from 'num_attr_X' (e.g., 'num_attr_1' -> 0)
-                        col_index = int(key.split('_')[-1]) - 1
-                        if 0 <= col_index < X_num.shape[1]:
-                            X_num[:, col_index] = np.clip(X_num[:, col_index], value['min'], value['max'])
-                    except (ValueError, IndexError):
-                        # Handle cases where key format is unexpected or index is out of bounds
-                        pass
-            
-            print("Defining domain_for_clipping")
         # The 'domain' variable for clipping will be user_domain_data if provided, else domain
         domain_for_clipping = user_domain_data if user_domain_data is not None else domain
-
-        
 
         if X_num is not None:
             print("Entering clipping loop")
@@ -91,35 +70,44 @@ class data_preporcesser_common():
             else:
                 self.num_encoder = sklearn.preprocessing.MinMaxScaler(feature_range=(0,1))
             X_num = self.num_encoder.fit_transform(X_num).astype(int)
-            self.num_col = X_num.shape[1]
+            self.num_col = X_num.shape[1] if X_num.ndim > 1 and X_num.shape[1] > 0 else 0
         if X_cat is not None:
             self.cat_encoder = rare_merger(cat_divide * 0.1 * rho, rare_threshold=rare_threshold, output_type=self.cat_output_type) #by default return ordinal encoded data
             X_cat = self.cat_encoder.fit_transform(X_cat).astype(int)
-            self.cat_col = X_cat.shape[1]
-
-        
+            self.cat_col = X_cat.shape[1] if X_cat.ndim > 1 and X_cat.shape[1] > 0 else 0
 
         print("Defining domain_for_clipping")
 
-        if self.args.method in ('merf', 'ddpm'):
-            df = {
-                "X_num": X_num,
-                "X_cat": X_cat,
-            }
-            domain = {
-                "X_num": [len(set(X_num[:, i])) for i in range(self.num_col)] if X_num is not None else [],
-                "X_cat": [len(cat) for cat in self.cat_encoder.ordinal_encoder.categories_] if X_cat is not None else [],
-            }
-        else:
-            col_name = [f'num_attr_{i}' for i in range(1, self.num_col + 1)] + [f'cat_attr_{i}' for i in range(1, self.cat_col + 1)]
+        # Get actual column names from user_info_data
+        num_col_names_actual = user_info_data.get("num_columns", [])
+        cat_col_names_actual = user_info_data.get("cat_columns", [])
 
-            if X_num is None:
-                df = pd.DataFrame(X_cat, columns=col_name)
-            elif X_cat is None:
-                df = pd.DataFrame(X_num, columns=col_name)
-            else:
-                df = pd.DataFrame(np.concatenate((X_num, X_cat), axis=1), columns=col_name) 
+        # Construct df using actual column names
+        if X_num is None:
+            df = pd.DataFrame(X_cat, columns=cat_col_names_actual) # Use actual cat names
+        elif X_cat is None:
+            df = pd.DataFrame(X_num, columns=num_col_names_actual) # Use actual num names
+        else:
+            # Concatenate with actual column names
+            df = pd.DataFrame(np.concatenate((X_num, X_cat), axis=1), 
+                              columns=num_col_names_actual + cat_col_names_actual) 
+
+        if self.args.method not in ('merf', 'ddpm'): # Only if we are using our user_domain_data
+            # Construct domain_list from the processed df columns and the domain dictionary
+            # The order of columns in df is important here
+            domain_list = []
+            for col_name in df.columns: # Iterate through the columns of the processed dataframe
+                if col_name in domain and 'size' in domain[col_name]:
+                    domain_list.append(domain[col_name]['size'])
+                else:
+                    # This should ideally not happen if domain_data is well-formed
+                    # Log an error or raise an exception if a column is missing from domain_data
+                    print(f"Warning: Column '{col_name}' not found or 'size' missing in domain data. Skipping.")
+            domain = domain_list # Update the 'domain' variable to be returned
     
+        if df.empty or df.shape[1] == 0:
+            raise ValueError("Processed dataframe has no columns. Please check input data and preprocessing steps.")
+
         return df, domain, 0.1*(num_divide + cat_divide)
 
 
@@ -135,6 +123,18 @@ class data_preporcesser_common():
                 x_num = x_num.reshape(-1,1)
             
             if self.num_encoder is not None:
+                # Only apply clipping if it's a KBinsDiscretizer (i.e., num_prep was 'uniform_kbins')
+                if isinstance(self.num_encoder, discretizer) and hasattr(self.num_encoder, 'encoder') and hasattr(self.num_encoder.encoder, 'n_bins_'):
+                    x_num_clipped = x_num.copy() # Make a copy before clipping
+                    print(f"x_num before clip - min: {x_num_clipped.min()}, max: {x_num_clipped.max()}")
+                    max_bin_index = len(self.num_encoder.encoder.categories_[0]) - 2 # Correct max ordinal index
+                    print(f"max_bin_index: {max_bin_index}")
+                    x_num_clipped = np.clip(x_num_clipped, 0, max_bin_index)
+                    print(f"x_num after clip - min: {x_num_clipped.min()}, max: {x_num_clipped.max()}")
+                    x_num = x_num_clipped # Use the clipped copy
+                
+                # Ensure x_num is a contiguous integer array before inverse_transform
+                x_num = np.ascontiguousarray(x_num).astype(int)
                 x_num = self.num_encoder.inverse_transform(x_num).astype(float)
             if path is not None:
                 np.save(os.path.join(path, 'X_num_train.npy'), x_num)

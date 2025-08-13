@@ -37,6 +37,8 @@ class Args:
 async def run_synthesis(
     args: Args, # Pass the Args object directly
     data_dir: str, # Path to the directory containing X_cat.npy, X_num.npy, domain.json, info.json
+    X_num_raw: np.ndarray,
+    X_cat_raw: np.ndarray,
     confirmed_domain_data: dict, # User-confirmed domain data
     confirmed_info_data: dict, # User-confirmed info data
     consist_iterations: int = 501,
@@ -93,7 +95,8 @@ async def run_synthesis(
     logger.info("Instantiating data_preprocessor_common and loading data.")
     data_preprocesser = data_preporcesser_common(args)
     df_processed, domain_processed, preprocesser_divide = data_preprocesser.load_data(
-        data_dir + '/',
+        X_num_raw,
+        X_cat_raw,
         total_rho,
         user_domain_data=confirmed_domain_data,
         user_info_data=confirmed_info_data
