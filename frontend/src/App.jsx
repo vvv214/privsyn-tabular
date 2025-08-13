@@ -5,7 +5,6 @@ import Papa from 'papaparse'; // Import PapaParse for CSV parsing
 import MetadataConfirmation from './MetadataConfirmation'; // Import the new component
 
 const API_URL = import.meta.env.VITE_API_BASE_URL;
-console.log('API_URL:', API_URL);
 
 function App() {
   const [currentPage, setCurrentPage] = useState('form'); // 'form', 'confirm_metadata', or 'result'

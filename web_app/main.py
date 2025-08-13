@@ -29,7 +29,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173","https://www.privsyn.com/"],  # Allow your frontend origin
+    allow_origins=["*"],  # Temporarily allow all origins for debugging CORS
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -81,6 +81,7 @@ async def synthesize_data(
     Receives an uploaded CSV or ZIP file, infers metadata,
     and returns the inferred metadata for user confirmation.
     """
+    logger.info(f"Entering synthesize_data endpoint. Dataset: {dataset_name}, Method: {method}")
     if dataset_name == "debug_dataset":
         logger.info("Debug mode: Bypassing data inference and returning dummy metadata.")
         unique_id = str(uuid.uuid4())
@@ -122,10 +123,14 @@ async def synthesize_data(
         if data_file is None:
             raise HTTPException(status_code=400, detail="Data file is required for synthesis unless in debug mode.")
         # 1. Load the uploaded file into a DataFrame
+        logger.info("Attempting to load dataframe from uploaded file.")
         df = load_dataframe_from_uploaded_file(data_file)
+        logger.info(f"DataFrame loaded. Shape: {df.shape}")
 
         # 2. Infer data metadata
+        logger.info("Attempting to infer data metadata.")
         inferred_data = infer_data_metadata(df, target_column=target_column)
+        logger.info("Data metadata inferred successfully.")
 
         # Store original df and y temporarily with a unique ID
         unique_id = str(uuid.uuid4())
