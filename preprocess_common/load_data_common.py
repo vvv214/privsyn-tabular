@@ -123,19 +123,23 @@ class data_preporcesser_common():
                 x_num = x_num.reshape(-1,1)
             
             if self.num_encoder is not None:
-                # Only apply clipping if it's a KBinsDiscretizer (i.e., num_prep was 'uniform_kbins')
-                if isinstance(self.num_encoder, discretizer) and hasattr(self.num_encoder, 'encoder') and hasattr(self.num_encoder.encoder, 'n_bins_'):
-                    x_num_clipped = x_num.copy() # Make a copy before clipping
-                    print(f"x_num before clip - min: {x_num_clipped.min()}, max: {x_num_clipped.max()}")
-                    max_bin_index = len(self.num_encoder.encoder.categories_[0]) - 2 # Correct max ordinal index
-                    print(f"max_bin_index: {max_bin_index}")
-                    x_num_clipped = np.clip(x_num_clipped, 0, max_bin_index)
-                    print(f"x_num after clip - min: {x_num_clipped.min()}, max: {x_num_clipped.max()}")
-                    x_num = x_num_clipped # Use the clipped copy
-                
-                # Ensure x_num is a contiguous integer array before inverse_transform
-                x_num = np.ascontiguousarray(x_num).astype(int)
-                x_num = self.num_encoder.inverse_transform(x_num).astype(float)
+                try:
+                    # Only apply clipping if it's a KBinsDiscretizer (i.e., num_prep was 'uniform_kbins')
+                    if isinstance(self.num_encoder, discretizer) and hasattr(self.num_encoder, 'encoder') and hasattr(self.num_encoder.encoder, 'n_bins_'):
+                        x_num_clipped = x_num.copy() # Make a copy before clipping
+                        print(f"x_num before clip - min: {x_num_clipped.min()}, max: {x_num_clipped.max()}")
+                        max_bin_index = len(self.num_encoder.encoder.categories_[0]) - 2 # Correct max ordinal index
+                        print(f"max_bin_index: {max_bin_index}")
+                        x_num_clipped = np.clip(x_num_clipped, 0, max_bin_index)
+                        print(f"x_num after clip - min: {x_num_clipped.min()}, max: {x_num_clipped.max()}")
+                        x_num = x_num_clipped # Use the clipped copy
+                    
+                    # Ensure x_num is a contiguous integer array before inverse_transform
+                    x_num = np.ascontiguousarray(x_num).astype(int)
+                    x_num = self.num_encoder.inverse_transform(x_num).astype(float)
+                except IndexError as e:
+                    print(f"Warning: IndexError during numerical inverse_transform. Returning None for numerical data. Error: {e}")
+                    x_num = None # Return None for numerical data if inverse_transform fails
             if path is not None:
                 np.save(os.path.join(path, 'X_num_train.npy'), x_num)
 

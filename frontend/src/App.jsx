@@ -125,10 +125,10 @@ function App() {
 
       const { message: responseMessage, dataset_name: returnedDatasetName } = response.data;
       setMessage(responseMessage);
-      setDownloadUrl(`http://localhost:8001/download_synthesized_data/${returnedDatasetName}`);
+      setDownloadUrl(`${API_URL}/download_synthesized_data/${returnedDatasetName}`);
 
       // Fetch the synthesized CSV for preview
-      const csvResponse = await axios.get(`http://localhost:8001/download_synthesized_data/${returnedDatasetName}`, { responseType: 'blob' });
+      const csvResponse = await axios.get(`${API_URL}/download_synthesized_data/${returnedDatasetName}`, { responseType: 'blob' });
 
       Papa.parse(csvResponse.data, {
         header: true,

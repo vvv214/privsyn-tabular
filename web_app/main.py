@@ -46,6 +46,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+allow_origins_list = ["http://localhost:5173", "http://localhost:5174", "https://www.privsyn.com"]
+logger.info(f"CORS allow_origins configured as: {repr(allow_origins_list)}")
 
 # Mount static files for the frontend
 # app.mount("/static", StaticFiles(directory="web_app/static"), name="static")
@@ -128,8 +130,8 @@ async def synthesize_data(
             }
         }
         logger.info(f"synthesize_data populated inferred_data_temp_storage with unique_id: {unique_id}, dataset_name: {dataset_name}")
-        logger.info(f"Domain data sent to frontend: {inferred_data_temp_storage[unique_id]["domain_data"]}")
-        logger.info(f"Info data sent to frontend: {inferred_data_temp_storage[unique_id]["info_data"]}")
+        logger.info(f"Domain data sent to frontend: {repr(inferred_data_temp_storage[unique_id]['domain_data'])}")
+        logger.info(f"Info data sent to frontend: {repr(inferred_data_temp_storage[unique_id]['info_data'])}")
         return JSONResponse(content={
             "message": "Metadata inferred. Please confirm.",
             "unique_id": unique_id,
