@@ -92,7 +92,7 @@ function App() {
     }
 
     try {
-      const response = await axios.post('${API_URL}/synthesize', data, {
+            const response = await axios.post(`${API_URL}/synthesize`, data, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -127,7 +127,7 @@ function App() {
     }
 
     try {
-      const response = await axios.post('${API_URL}/confirm_synthesis', data, {
+      const response = await axios.post(`${API_URL}/confirm_synthesis`, data, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
