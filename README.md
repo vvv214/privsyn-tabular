@@ -152,6 +152,26 @@ The frontend is a React.js application built with Vite, deployed on Vercel.
         *   The backend is running the latest code with the correct `allow_origins` configuration.
         *   There are no intermediary proxies or CDNs stripping the `Access-Control-Allow-Origin` header. (Setting `allow_origins=["*"]` temporarily can help diagnose if an external factor is interfering, but should not be used in production).
 
+### Backend Deployment (Google Cloud Run)
+
+The backend can also be deployed to Google Cloud Run using Docker.
+
+1.  **Build the Docker image using Google Cloud Build:**
+
+    Replace `<your-gcp-project-id>` with your actual Google Cloud Project ID.
+
+    ```bash
+    gcloud builds submit --tag gcr.io/<your-gcp-project-id>/privsyn-backend .
+    ```
+
+2.  **Deploy the image to Cloud Run:**
+
+    This command deploys the container image to Cloud Run, making it publicly accessible.
+
+    ```bash
+    gcloud run deploy privsyn-tabular --image gcr.io/<your-gcp-project-id>/privsyn-backend --platform managed --region us-east4 --memory 1Gi --allow-unauthenticated
+    ```
+
 ## PrivSyn Modules (Modularized API)
 
 Beyond an overall implementation of PrivSyn, this repository also offers the modularized API of PrivSyn, which are `InDif selection` and `GUM`.
