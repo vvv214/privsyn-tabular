@@ -117,48 +117,65 @@ function App() {
   };
 
   const handleConfirmMetadata = async (uniqueId, confirmedDomainData, confirmedInfoData) => {
-    setMessage('Synthesizing data...');
+    setMessage('Initiating data synthesis... This may take a few minutes.');
     setError('');
+    setCurrentPage('result'); // Switch to a page that can show progress
 
     const data = new FormData();
     data.append('unique_id', uniqueId);
     data.append('confirmed_domain_data', JSON.stringify(confirmedDomainData));
     data.append('confirmed_info_data', JSON.stringify(confirmedInfoData));
 
-    // Append all synthesis parameters from formData
     for (const key in formData) {
       data.append(key, formData[key]);
     }
 
     try {
       const response = await axios.post(`${API_URL}/confirm_synthesis`, data, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      const { message: responseMessage, dataset_name: returnedDatasetName } = response.data;
-      setMessage(responseMessage);
-      setDownloadUrl(`${API_URL}/download_synthesized_data/${returnedDatasetName}`);
+      const { job_id, dataset_name } = response.data;
+      setMessage(`Synthesis job started with ID: ${job_id}. Polling for results...`);
 
-      // Fetch the synthesized CSV for preview
-      const csvResponse = await axios.get(`${API_URL}/download_synthesized_data/${returnedDatasetName}`, { responseType: 'blob' });
+      const pollInterval = setInterval(async () => {
+        try {
+          const statusResponse = await axios.get(`${API_URL}/synthesis_status/${job_id}`);
+          const { status, error: jobError } = statusResponse.data;
 
-      Papa.parse(csvResponse.data, {
-        header: true,
-        skipEmptyLines: true,
-        complete: (results) => {
-          setSynthesizedDataHeaders(results.meta.fields || []);
-          setSynthesizedDataPreview(results.data.slice(0, 10)); // Show first 10 rows
-          setCurrentPage('result'); // Switch to result page
-          handleEvaluate(['query', 'tvd']); // Automatically trigger evaluation
-        },
-        error: (err) => {
-          console.error("CSV parsing error:", err);
-          setError("Failed to parse synthesized data for preview.");
+          if (status === 'completed') {
+            clearInterval(pollInterval);
+            setMessage('Synthesis complete! Fetching results...');
+            setDownloadUrl(`${API_URL}/download_synthesized_data/${dataset_name}`);
+
+            const csvResponse = await axios.get(`${API_URL}/download_synthesized_data/${dataset_name}`, { responseType: 'blob' });
+            Papa.parse(csvResponse.data, {
+              header: true,
+              skipEmptyLines: true,
+              complete: (results) => {
+                setSynthesizedDataHeaders(results.meta.fields || []);
+                setSynthesizedDataPreview(results.data.slice(0, 10));
+                handleEvaluate(['tvd']);
+              },
+              error: (err) => {
+                console.error("CSV parsing error:", err);
+                setError("Failed to parse synthesized data for preview.");
+              }
+            });
+          } else if (status === 'failed') {
+            clearInterval(pollInterval);
+            setError(`Synthesis failed: ${jobError}`);
+            setMessage('');
+          } else {
+            setMessage(`Synthesis in progress... Status: ${status}`);
+          }
+        } catch (pollError) {
+          clearInterval(pollInterval);
+          console.error('Polling error:', pollError);
+          setError('Failed to get synthesis status.');
           setMessage('');
         }
-      });
+      }, 5000); // Poll every 5 seconds
 
     } catch (err) {
       console.error('Confirmation and Synthesis error:', err);
@@ -205,6 +222,12 @@ function App() {
       <div className="mx-auto" style={{ maxWidth: 800, width: '100%' }}>
           
         <h1 className="mb-4 text-center">PrivSyn Data Synthesizer</h1>
+
+        <p className="text-center mb-4">
+          This tool allows you to synthesize data with differential privacy.
+          Upload your dataset, and this tool will infer the metadata, which you can then confirm or correct.
+          After that, you can choose the synthesis parameters and generate a new, synthetic dataset.
+        </p>
 
         {message && <div className="alert alert-info mt-4">{message}</div>}
         {error && <div className="alert alert-danger mt-4">Error: {error}</div>}
@@ -362,6 +385,7 @@ function App() {
                           onChange={handleChange}
                           required
                         />
+                        <small className="text-muted">Threshold for merging rare categories.</small>
                       </div>
                       <div className="col-md-6">
                         <label htmlFor="consist_iterations" className="form-label">Consist Iterations</label>
@@ -374,6 +398,7 @@ function App() {
                           onChange={handleChange}
                           required
                         />
+                        <small className="text-muted">Number of iterations for marginal consistency.</small>
                       </div>
                     </div>
                     <div className="row mb-3">

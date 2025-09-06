@@ -52,6 +52,9 @@ const MetadataConfirmation = ({ uniqueId, inferredDomainData, inferredInfoData, 
                 <h3 className="mb-0">Confirm Inferred Metadata</h3>
             </div>
             <div className="card-body">
+                <div className="alert alert-warning" role="alert">
+                    <strong>Warning:</strong> The inferred metadata is not differentially private. Please carefully review and adjust the domain information below to ensure it accurately reflects your data and privacy requirements. For numerical data, specify the min/max and binning strategy. For categorical data, ensure all possible categories are accounted for.
+                </div>
                 <form onSubmit={handleSubmit}>
                     <div className="card mb-4">
                         <div className="card-header">
