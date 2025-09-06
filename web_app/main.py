@@ -41,12 +41,12 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:5174", "https://www.privsyn.com"],  # Allow your frontend origin
+    allow_origins=["http://localhost:5173", "http://localhost:5174", "https://www.privsyn.com", "https://privsyn-tabular-334258925264.us-east4.run.app"],  # Allow your frontend origin
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-allow_origins_list = ["http://localhost:5173", "http://localhost:5174", "https://www.privsyn.com"]
+allow_origins_list = ["http://localhost:5173", "http://localhost:5174", "https://www.privsyn.com", "https://privsyn-tabular-334258925264.us-east4.run.app"]
 logger.info(f"CORS allow_origins configured as: {repr(allow_origins_list)}")
 
 # Mount static files for the frontend

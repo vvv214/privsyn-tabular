@@ -11,15 +11,29 @@ const MetadataConfirmation = ({ uniqueId, inferredDomainData, inferredInfoData, 
 
     
 
-    const handleDomainChange = (key, value, subKey = 'size') => {
-        setDomainData(prev => {
-            return {
-                ...prev,
+    const handleDomainChange = (key, value, subKey) => {
+        setDomainData(prevDomainData => {
+            const oldType = prevDomainData[key].type;
+            const newType = subKey === 'type' ? value : oldType;
+
+            const updatedDomain = {
+                ...prevDomainData,
                 [key]: {
-                    ...prev[key],
-                    [subKey]: parseFloat(value) || 0 // Assuming 'size' is always numerical
+                    ...prevDomainData[key],
+                    [subKey]: subKey === 'size' ? parseFloat(value) || 0 : value
                 }
             };
+
+            // If type has changed, update infoData counts
+            if (subKey === 'type' && oldType !== newType) {
+                setInfoData(prevInfoData => {
+                    const n_num_features = prevInfoData.n_num_features + (newType === 'numerical' ? 1 : -1);
+                    const n_cat_features = prevInfoData.n_cat_features + (newType === 'categorical' ? 1 : -1);
+                    return { ...prevInfoData, n_num_features, n_cat_features };
+                });
+            }
+
+            return updatedDomain;
         });
     };
 
@@ -70,45 +84,41 @@ const MetadataConfirmation = ({ uniqueId, inferredDomainData, inferredInfoData, 
                             <h4 className="mb-0">Domain Information</h4>
                         </div>
                         <div className="card-body">
-                            <div className="row">
-                                {Object.entries(domainData).map(([key, value]) => {
-                                    const labelText = key; // Use the actual column name as label
-                                    const isNumerical = value.type === 'numerical';
-                                    const isCategorical = value.type === 'categorical';
-
-                                    return (
-                                        <div className="col-md-6 mb-3 d-flex justify-content-center align-items-center flex-column" key={key}>
-                                            <label htmlFor={`domain_${key}`} className="form-label">{labelText}</label>
-                                            {isNumerical && (
-                                                <div className="d-flex flex-row align-items-center">
-                                                    <label htmlFor={`domain_${key}_size`} className="form-label me-2">Size:</label>
+                            <div className="table-responsive">
+                                <table className="table table-bordered table-hover">
+                                    <thead className="table-light">
+                                        <tr>
+                                            <th>Column Name</th>
+                                            <th>Data Type</th>
+                                            <th>Size / Categories</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {Object.entries(domainData).map(([key, value]) => (
+                                            <tr key={key}>
+                                                <td>{key}</td>
+                                                <td>
+                                                    <select
+                                                        className="form-select"
+                                                        value={value.type}
+                                                        onChange={(e) => handleDomainChange(key, e.target.value, 'type')}
+                                                    >
+                                                        <option value="numerical">Numerical</option>
+                                                        <option value="categorical">Categorical</option>
+                                                    </select>
+                                                </td>
+                                                <td>
                                                     <input
                                                         type="number"
-                                                        id={`domain_${key}_size`}
                                                         className="form-control"
                                                         value={value.size || 0}
                                                         onChange={(e) => handleDomainChange(key, e.target.value, 'size')}
                                                     />
-                                                </div>
-                                            )}
-                                            {isCategorical && (
-                                                <div className="d-flex flex-row align-items-center">
-                                                    <label htmlFor={`domain_${key}_size`} className="form-label me-2">Categories:</label>
-                                                    <input
-                                                        type="number"
-                                                        id={`domain_${key}_size`}
-                                                        className="form-control"
-                                                        value={value.size || 0}
-                                                        onChange={(e) => handleDomainChange(key, e.target.value, 'size')}
-                                                    />
-                                                </div>
-                                            )}
-                                            {/* Optional: Add a small text to clarify what 'size' means for each type */}
-                                            {isNumerical && <small className="text-muted">Number of unique values</small>}
-                                            {isCategorical && <small className="text-muted">Number of unique categories</small>}
-                                        </div>
-                                    );
-                                })}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
