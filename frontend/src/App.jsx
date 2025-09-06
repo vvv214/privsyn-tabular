@@ -56,6 +56,20 @@ function App() {
     setDataFile(e.target.files[0]); // Set the single data file
   };
 
+  const loadSampleData = async () => {
+    try {
+      const response = await fetch('/adult.csv.zip');
+      const blob = await response.blob();
+      const file = new File([blob], 'adult.csv.zip', { type: 'application/zip' });
+      setDataFile(file);
+      setFormData(prev => ({ ...prev, dataset_name: 'adult_sample' }));
+      setMessage('Sample dataset (adult.csv.zip) loaded.');
+    } catch (error) {
+      console.error('Error loading sample data:', error);
+      setError('Failed to load sample data.');
+    }
+  };
+
   
 
   const handleSubmit = async (e) => {
@@ -220,7 +234,7 @@ function App() {
 
                 <div className="row mb-3">
                   <div className="col-md-4">
-                    <label htmlFor="epsilon" className="form-label">Epsilon</label>
+                    <label htmlFor="epsilon" className="form-label">Epsilon (ε)</label>
                     <input
                       type="number"
                       step="any"
@@ -231,9 +245,10 @@ function App() {
                       onChange={handleChange}
                       required
                     />
+                    <small className="text-muted">Privacy parameter; smaller is more private.</small>
                   </div>
                   <div className="col-md-4">
-                    <label htmlFor="delta" className="form-label">Delta</label>
+                    <label htmlFor="delta" className="form-label">Delta (δ)</label>
                     <input
                       type="number"
                       step="any"
@@ -244,6 +259,7 @@ function App() {
                       onChange={handleChange}
                       required
                     />
+                    <small className="text-muted">Privacy parameter; should be small.</small>
                   </div>
                   <div className="col-md-4">
                     <label htmlFor="n_sample" className="form-label">Number of Samples</label>
@@ -256,6 +272,7 @@ function App() {
                       onChange={handleChange}
                       required
                     />
+                    <small className="text-muted">Number of synthetic records to generate.</small>
                   </div>
                 </div>
 
@@ -270,8 +287,17 @@ function App() {
                     name="data_file"
                     onChange={handleFileChange}
                     accept=".csv,.zip"
-                    required
                   />
+                </div>
+                <div className="text-center my-3">
+                  <p className="mb-2">Or, use a sample dataset:</p>
+                  <button
+                    type="button"
+                    className="btn btn-outline-primary"
+                    onClick={loadSampleData}
+                  >
+                    Load Adult Sample Dataset
+                  </button>
                 </div>
 
                 {/* Advanced Settings Toggle */}
@@ -293,27 +319,34 @@ function App() {
                     <div className="row mb-3">
                       <div className="col-md-6">
                         <label htmlFor="method" className="form-label">Method</label>
-                        <input
-                          type="text"
-                          className="form-control"
+                        <select
+                          className="form-select"
                           id="method"
                           name="method"
                           value={formData.method}
                           onChange={handleChange}
-                          required
-                        />
+                          disabled
+                        >
+                          <option value="privsyn">PrivSyn</option>
+                        </select>
+                        <small className="text-muted">Currently, only the PrivSyn method is supported.</small>
                       </div>
                       <div className="col-md-6">
                         <label htmlFor="num_preprocess" className="form-label">Numerical Preprocess</label>
-                        <input
-                          type="text"
-                          className="form-control"
+                        <select
+                          className="form-select"
                           id="num_preprocess"
                           name="num_preprocess"
                           value={formData.num_preprocess}
                           onChange={handleChange}
                           required
-                        />
+                        >
+                          <option value="uniform_kbins">Uniform K-Bins</option>
+                          <option value="exp_kbins">Exponential K-Bins</option>
+                          <option value="privtree">PrivTree</option>
+                          <option value="dawa">Dawa</option>
+                          <option value="none">None</option>
+                        </select>
                       </div>
                     </div>
                     <div className="row mb-3">
