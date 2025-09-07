@@ -124,52 +124,159 @@ class RecordUpdate:
         num_complete = np.rint(complete_ratio * self.num_add).astype(int)
         num_partial = np.rint((1 - complete_ratio) * self.num_add).astype(int)
 
-        valid_indices = np.nonzero(num_complete + num_partial)
-        num_complete = num_complete[valid_indices]
-        num_partial = num_partial[valid_indices]
+        valid_mask = (num_complete + num_partial) > 0
+        if not np.any(valid_mask):
+            return
+
+        valid_indices = np.nonzero(valid_mask)[0]
+        num_complete_v = num_complete[valid_indices]
+        num_partial_v = num_partial[valid_indices]
+        num_total_v = num_complete_v + num_partial_v
+
+        available = self.records_throw_indices.shape[0]
+        if int(np.sum(num_total_v)) > available:
+            # Fallback to original per-cell loop to preserve semantics when not enough slots
+            valid_cell_under_indices = self.cell_under_indices[valid_indices]
+            left = np.searchsorted(self.encode_records, valid_cell_under_indices, side="left")
+            right = np.searchsorted(self.encode_records, valid_cell_under_indices, side="right")
+
+            for i, cell_index in enumerate(valid_cell_under_indices):
+                match_records_indices = self.encode_records_sort_index[left[i]: right[i]]
+                np.random.shuffle(match_records_indices)
+
+                need = num_total_v[i]
+                if self.records_throw_indices.shape[0] >= need:
+                    k_c = num_complete_v[i]
+                    k_p = num_partial_v[i]
+                    if k_c:
+                        self.records[self.records_throw_indices[:k_c]] = self.records[match_records_indices[:k_c]]
+                    if k_p:
+                        self.records[np.ix_(self.records_throw_indices[k_c:k_c + k_p], marg.attributes_index)] = marg.tuple_key[cell_index]
+                    self.records_throw_indices = self.records_throw_indices[need:]
+                else:
+                    self.records[self.records_throw_indices] = self.records[match_records_indices[: self.records_throw_indices.size]]
+            return
+
+        # Vectorized path when we have enough slots
+        starts = np.cumsum(num_total_v) - num_total_v
+        ends = starts + num_total_v
 
         valid_cell_under_indices = self.cell_under_indices[valid_indices]
-        valid_data_under_index_left = np.searchsorted(self.encode_records, valid_cell_under_indices, side="left")
-        valid_data_under_index_right = np.searchsorted(self.encode_records, valid_cell_under_indices, side="right")
-        
-        for valid_index, cell_index in enumerate(valid_cell_under_indices):
-            match_records_indices = self.encode_records_sort_index[
-                                    valid_data_under_index_left[valid_index]: valid_data_under_index_right[valid_index]]
+        left = np.searchsorted(self.encode_records, valid_cell_under_indices, side="left")
+        right = np.searchsorted(self.encode_records, valid_cell_under_indices, side="right")
 
-            np.random.shuffle(match_records_indices)
-            
-            if self.records_throw_indices.shape[0] >= (num_complete[valid_index] + num_partial[valid_index]):
-                # complete update code
-                if num_complete[valid_index] != 0:
-                    self.records[self.records_throw_indices[: num_complete[valid_index]]] = self.records[
-                        match_records_indices[: num_complete[valid_index]]]
-                
-                # partial update code
-                if num_partial[valid_index] != 0:
-                    self.records[np.ix_(
-                        self.records_throw_indices[num_complete[valid_index]: (num_complete[valid_index] + num_partial[valid_index])],
-                        marg.attributes_index)] = marg.tuple_key[cell_index]
-                
-                # update records_throw_indices
-                self.records_throw_indices = self.records_throw_indices[num_complete[valid_index] + num_partial[valid_index]:]
-            
-            else:
-                # todo: simply apply complete operation here, do not know whether it is make sense
-                self.records[self.records_throw_indices] = self.records[
-                    match_records_indices[: self.records_throw_indices.size]]
+        # For each cell, permute matches once and slice required count
+        per_cell_selected = []
+        sel_lengths = []
+        for i in range(valid_indices.size):
+            match_slice = self.encode_records_sort_index[left[i]: right[i]]
+            need = int(num_total_v[i])
+            if match_slice.size == 0 or need == 0:
+                per_cell_selected.append(np.array([], dtype=np.uint32))
+                sel_lengths.append(0)
+                continue
+            perm = np.random.permutation(match_slice)
+            picked = perm[: min(need, match_slice.size)]
+            per_cell_selected.append(picked)
+            sel_lengths.append(picked.size)
+
+        total_sel = int(np.sum(sel_lengths))
+        if total_sel == 0:
+            return
+        selected_flat = np.concatenate([arr for arr in per_cell_selected if arr.size > 0])
+
+        # Full replacements (complete) with clamping to available selected items
+        full_src = []
+        full_dst = []
+        offset = 0
+        for i in range(valid_indices.size):
+            kc = int(num_complete_v[i])
+            L = int(sel_lengths[i])
+            if kc == 0 or L == 0:
+                offset += L
+                continue
+            kc_eff = min(kc, L)
+            s = int(starts[i])
+            src_slice = selected_flat[offset: offset + L]
+            full_src.append(src_slice[:kc_eff])
+            full_dst.append(self.records_throw_indices[s: s + kc_eff])
+            offset += L
+        used_full = 0
+        if full_src:
+            fs = np.concatenate(full_src)
+            fd = np.concatenate(full_dst)
+            used_full = fd.size
+            self.records[fd] = self.records[fs]
+
+        # Partial updates (set marg attributes to tuple_key), also clamped to remaining per-cell selected items
+        part_src_vals = []
+        part_dst_idx = []
+        offset = 0
+        for i in range(valid_indices.size):
+            L = int(sel_lengths[i])
+            kp = int(num_partial_v[i])
+            kc = int(num_complete_v[i])
+            if L == 0 or kp == 0:
+                offset += L
+                continue
+            kc_eff = min(kc, L)
+            kp_eff = min(kp, L - kc_eff)
+            if kp_eff <= 0:
+                offset += L
+                continue
+            s = int(starts[i])
+            dst = self.records_throw_indices[s + kc_eff: s + kc_eff + kp_eff]
+            part_dst_idx.append(dst)
+            tk = np.tile(marg.tuple_key[valid_cell_under_indices[i]], (kp_eff, 1))
+            part_src_vals.append(tk)
+            offset += L
+        used_part = 0
+        if part_dst_idx:
+            dst_all = np.concatenate(part_dst_idx)
+            vals_all = np.vstack(part_src_vals)
+            used_part = dst_all.size
+            self.records[np.ix_(dst_all, marg.attributes_index)] = vals_all
+
+        # Consume only the number of throw indices that were actually used
+        self.records_throw_indices = self.records_throw_indices[(used_full + used_part) :]
     
     def handle_zero_cells(self, marg):
         # overwrite / partial when synthesize_marginal == 0
-        if self.cell_zero_indices.size != 0:
+        if self.cell_zero_indices.size == 0:
+            return
+        k = self.num_add_zero.astype(int)
+        if np.sum(k) == 0:
+            return
+        available = self.records_throw_indices.shape[0]
+        total_k = int(np.sum(k))
+        if total_k > available:
+            # Fallback to original per-cell behavior
             for index, cell_index in enumerate(self.cell_zero_indices):
                 num_partial = int(self.num_add_zero[index])
-                
-                if num_partial != 0:
-                    for i in range(marg.ways):
-                        self.records[self.records_throw_indices[: num_partial], marg.attributes_index[i]] = \
-                            marg.tuple_key[cell_index, i]
-                
-                self.records_throw_indices = self.records_throw_indices[num_partial:]
+                eff = min(num_partial, self.records_throw_indices.shape[0])
+                if eff > 0:
+                    self.records[np.ix_(self.records_throw_indices[: eff], marg.attributes_index)] = \
+                        np.tile(marg.tuple_key[cell_index], (eff, 1))
+                self.records_throw_indices = self.records_throw_indices[eff:]
+            return
+
+        # Vectorized assignment
+        starts = np.cumsum(k) - k
+        part_dst_idx = []
+        part_src_vals = []
+        for i, cell_index in enumerate(self.cell_zero_indices):
+            ki = int(k[i])
+            if ki == 0:
+                continue
+            s = int(starts[i])
+            dst = self.records_throw_indices[s: s + ki]
+            part_dst_idx.append(dst)
+            part_src_vals.append(np.tile(marg.tuple_key[cell_index], (ki, 1)))
+        if part_dst_idx:
+            dst_all = np.concatenate(part_dst_idx)
+            vals_all = np.vstack(part_src_vals)
+            self.records[np.ix_(dst_all, marg.attributes_index)] = vals_all
+        self.records_throw_indices = self.records_throw_indices[total_k:]
     
     def find_optimal_beta(self, num_add_total, cell_over_indices):
         actual_marginal_under = self.actual_marginal[cell_over_indices]

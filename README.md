@@ -96,6 +96,24 @@ Notes:
 - The test sets `VITE_API_BASE_URL` to `http://localhost:8001` and starts both servers.
 - It uploads `sample_data/adult.csv.zip`, confirms inferred metadata, waits for synthesis to complete, and verifies the download link and preview table.
 
+Convenience script:
+
+```
+./scripts/run_e2e.sh
+```
+
+This will create a `.venv`, install Python deps, install Playwright browsers, install frontend deps, and run the E2E.
+
+### 1.2 Quick Benchmarks
+
+Run a small end-to-end synthesis benchmark on the sample data:
+
+```
+python scripts/bench_synthesis_speed.py --n_sample 1000
+```
+
+It prints timings for load/infer/preprocess/marginal selection/synthesis stages.
+
 #### Memory Usage Monitoring (Local)
 
 When running the backend locally, you can observe memory peak usage in the terminal where the `uvicorn` server is running. We've added logging statements to `web_app/main.py` to output memory usage at key stages.
