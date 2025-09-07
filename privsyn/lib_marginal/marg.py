@@ -195,15 +195,21 @@ class Marginal:
                 w = ab.asarray(weights)
                 S = ab.asarray(self.summations)
                 denom = ab.to_numpy(w.sum())
-                if denom == 0:
-                    denom = 1.0
+                if denom <= 0 or not np.isfinite(denom):
+                    # No contribution; set delta to zero
+                    self.delta = np.zeros_like(self.summations)
+                    return
                 target = ab.to_numpy(S.dot(w) / denom)
                 self.delta = - (self.summations.T - target).T * weights
                 return
             except Exception:
                 pass
-        target = np.matmul(self.summations, weights) / np.sum(weights)
-        self.delta = - (self.summations.T - target).T * weights
+        denom = np.sum(weights)
+        if denom <= 0 or not np.isfinite(denom):
+            self.delta = np.zeros_like(self.summations)
+        else:
+            target = np.matmul(self.summations, weights) / denom
+            self.delta = - (self.summations.T - target).T * weights
 
     def project_from_bigger_marg(self, bigger_marg, index):
         encode_num = np.zeros(self.num_attributes, dtype=np.uint32)

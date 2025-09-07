@@ -11,6 +11,7 @@ import math
 import numpy as np
 import pandas as pd
 import itertools
+import os
 
 from privsyn.lib_marginal.marg import Marginal
 from tqdm import tqdm
@@ -41,9 +42,10 @@ def calculate_indif(logger, dataset, dataset_name, rho):
         indif_df.error += np.random.normal(
             scale=np.sqrt(8 * indif_df.shape[0]/rho), size=indif_df.shape[0])
 
-    # publish indif
-    pickle.dump(indif_df, open(
-        config.DEPENDENCY_PATH + dataset_name, "wb"))
+    # publish indif (ensure directory exists)
+    out_path = config.DEPENDENCY_PATH + dataset_name
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    pickle.dump(indif_df, open(out_path, "wb"))
 
     logger.info("calculated pair indif")
     return indif_df
