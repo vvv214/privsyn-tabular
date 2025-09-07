@@ -13,47 +13,30 @@ import networkx as nx
 import numpy as np
 
 def sep_graph(logger, domain, marginals, iterate_marginals, enable=True):
-    '''
-    
+    """
     Separate&Join
-    
-    '''
+    """
     def _find_keys_set(keys):
         keys_set = set()
-
         for key in keys:
             keys_set.update(key)
-
         return tuple(keys_set)
-    
+
     logger.info("separating graph")
-    
-    #constructing graph
+
+    # constructing graph
     graph = _construct_graph(domain, marginals)
 
-    #finding separate graphs
-    for m in marginals:
-        graph.add_edges_from(itertools.combinations(m, 2))
-        
-        iterate_keys = {}
+    iterate_keys = {}
 
-        if enable is False:
-            keys = []
-
-            for marginal in marginals:
-                if marginal in iterate_marginals:
-                    keys.append(marginal)
-
+    if not enable:
+        keys = [m for m in marginals if m in iterate_marginals]
+        if keys:
             iterate_keys[_find_keys_set(marginals)] = keys
-
-        else:
-            for component in nx.connected_components(graph):
-                keys = []
-
-                for marginal in marginals:
-                    if set(marginal) < component and marginal in iterate_marginals:
-                        keys.append(marginal)
-
+    else:
+        for component in nx.connected_components(graph):
+            keys = [m for m in marginals if set(m) < component and m in iterate_marginals]
+            if keys:
                 iterate_keys[_find_keys_set(keys)] = keys
 
     return iterate_keys
