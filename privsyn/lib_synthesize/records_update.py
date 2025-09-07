@@ -90,21 +90,24 @@ class RecordUpdate:
         valid_indices = np.nonzero(self.num_reduce)[0]
         valid_cell_over_indices = self.cell_over_indices[valid_indices]
         valid_cell_num_reduce = self.num_reduce[valid_indices]
-        valid_data_over_index_left = np.searchsorted(self.encode_records, valid_cell_over_indices, side="left")
-        valid_data_over_index_right = np.searchsorted(self.encode_records, valid_cell_over_indices, side="right")
-    
-        valid_num_reduce = np.sum(valid_cell_num_reduce)
-        self.records_throw_indices = np.zeros(valid_num_reduce, dtype=np.uint32)
-        throw_pointer = 0
-        
-        for i, cell_index in enumerate(valid_cell_over_indices):
-            match_records_indices = self.encode_records_sort_index[
-                                    valid_data_over_index_left[i]: valid_data_over_index_right[i]]
-            throw_indices = np.random.choice(match_records_indices, valid_cell_num_reduce[i], replace=False)
-            
-            self.records_throw_indices[throw_pointer: throw_pointer + throw_indices.size] = throw_indices
-            throw_pointer += throw_indices.size
-        
+        left = np.searchsorted(self.encode_records, valid_cell_over_indices, side="left")
+        right = np.searchsorted(self.encode_records, valid_cell_over_indices, side="right")
+
+        total = int(np.sum(valid_cell_num_reduce))
+        self.records_throw_indices = np.zeros(total, dtype=np.uint32)
+
+        # Build selections per cell with permutation to avoid Python loops assigning piecewise
+        selections = []
+        for i in range(valid_cell_over_indices.size):
+            start, end = left[i], right[i]
+            match_indices = self.encode_records_sort_index[start:end]
+            k = int(valid_cell_num_reduce[i])
+            # Keep replace=False as original semantics; assume enough matches
+            if k > 0:
+                perm = np.random.permutation(match_indices)
+                selections.append(perm[:k])
+        if selections:
+            self.records_throw_indices[:] = np.concatenate(selections)
         np.random.shuffle(self.records_throw_indices)
     
     def complete_partial_ratio(self, marg, complete_ratio):

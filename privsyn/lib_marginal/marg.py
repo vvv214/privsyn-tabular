@@ -189,6 +189,19 @@ class Marginal:
 
     def calculate_delta(self):
         weights = self.rhos * self.weights
+        # Optional GPU path via array_backend
+        if ab.enabled():
+            try:
+                w = ab.asarray(weights)
+                S = ab.asarray(self.summations)
+                denom = ab.to_numpy(w.sum())
+                if denom == 0:
+                    denom = 1.0
+                target = ab.to_numpy(S.dot(w) / denom)
+                self.delta = - (self.summations.T - target).T * weights
+                return
+            except Exception:
+                pass
         target = np.matmul(self.summations, weights) / np.sum(weights)
         self.delta = - (self.summations.T - target).T * weights
 

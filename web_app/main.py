@@ -11,7 +11,6 @@ import numpy as np
 import json
 import importlib # For dynamic import of evaluation scripts
 from .data_comparison import calculate_tvd_metrics
-import sys # For sys.path modification
 from fastapi.staticfiles import StaticFiles
 
 import psutil # For memory monitoring
@@ -29,9 +28,7 @@ def log_memory_usage(stage: str):
 
 
 
-# Add the project root to the sys.path to allow importing project modules
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.insert(0, project_root)
 
 from .synthesis_service import run_synthesis, Args # Import Args from synthesis_service
 import uuid # For generating unique IDs for temporary storage

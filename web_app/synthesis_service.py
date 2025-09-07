@@ -1,4 +1,3 @@
-import sys
 import os
 import numpy as np
 import pandas as pd
@@ -13,10 +12,7 @@ from typing import Dict, Any, Tuple, Callable, Optional
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Add the project root to the sys.path to allow importing project modules
-# Assuming the project root is two levels up from this file (web_app/synthesis_service.py)
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.insert(0, project_root)
 
 # Import necessary modules from the main project
 from privsyn.privsyn import privsyn_main, add_default_params
