@@ -141,7 +141,7 @@ function App() {
       const pollInterval = setInterval(async () => {
         try {
           const statusResponse = await axios.get(`${API_URL}/synthesis_status/${job_id}`);
-          const { status, error: jobError } = statusResponse.data;
+          const { status, error: jobError, stage, overall_step, overall_total, inner_step, inner_total, message: progressMessage } = statusResponse.data;
 
           if (status === 'completed') {
             clearInterval(pollInterval);
@@ -167,7 +167,16 @@ function App() {
             setError(`Synthesis failed: ${jobError}`);
             setMessage('');
           } else {
-            setMessage(`Synthesis in progress... Status: ${status}`);
+            if (progressMessage) {
+              // Prefer detailed progress if available
+              const overall = overall_step && overall_total ? ` (step ${overall_step}/${overall_total})` : '';
+              const inner = inner_step && inner_total ? ` — iteration ${inner_step}/${inner_total}` : '';
+              setMessage(`${progressMessage}${overall}${inner}`);
+            } else if (stage && overall_step && overall_total) {
+              setMessage(`Synthesis in progress: ${stage} (${overall_step}/${overall_total})`);
+            } else {
+              setMessage(`Synthesis in progress... Status: ${status}`);
+            }
           }
         } catch (pollError) {
           clearInterval(pollInterval);

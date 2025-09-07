@@ -14,7 +14,7 @@ from privsyn.lib_marginal.marg import Marginal
 
 
 class GUM_Mechanism():
-    def __init__(self, args, dataset, combined_marg_dict, one_way_marg_dict):
+    def __init__(self, args, dataset, combined_marg_dict, one_way_marg_dict, progress_report=None):
         self.args = args
         self.check_args()
 
@@ -28,6 +28,7 @@ class GUM_Mechanism():
 
         self.logger = logging.getLogger('GUM')
         self.logger.setLevel(logging.WARNING)
+        self.progress_report = progress_report
 
 
     def run(self, n_sample):
@@ -70,6 +71,8 @@ class GUM_Mechanism():
             "non_negativity": self.args['non_negativity'],
         }
         
+        if self.progress_report:
+            self.progress_report({"status": "running", "stage": "consistency", "overall_step": 3, "overall_total": 5, "message": "Consist marginals"})
         consistenter = Consistenter(marg_dict, recode_domain, consist_parameters)
         consistenter.consist_marginals()
         
@@ -125,6 +128,17 @@ class GUM_Mechanism():
 
             for index, key in enumerate(margs_iterate_key):
                 synthesizer.update_records(self.marg_dict[key], key, update_iteration)
+
+            if self.progress_report:
+                self.progress_report({
+                    "status": "running",
+                    "stage": "synthesize",
+                    "overall_step": 4,
+                    "overall_total": 5,
+                    "inner_step": update_iteration + 1,
+                    "inner_total": self.args['update_iterations'],
+                    "message": f"Synthesize iteration {update_iteration + 1}/{self.args['update_iterations']}"
+                })
 
         return synthesizer
 

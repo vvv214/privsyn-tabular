@@ -68,13 +68,15 @@ class PrivSyn():
 
     
 
-    def syn(self, n_sample, preprocesser, parent_dir, **kwargs):
+    def syn(self, n_sample, preprocesser, parent_dir, progress_report=None, **kwargs):
         self.logger.info(f"Starting synthesis for {n_sample} samples.")
-        self.model = GUM_Mechanism(self.args, self.original_dataset, self.combined_marg_dict, self.one_way_marg_dict)
+        self.model = GUM_Mechanism(self.args, self.original_dataset, self.combined_marg_dict, self.one_way_marg_dict, progress_report=progress_report)
         self.logger.info("GUM_Mechanism initialized. Running GUM model.")
         self.synthesized_df = self.model.run(n_sample)
         print(f"Synthesized DF min: {self.synthesized_df.min().min()}, max: {self.synthesized_df.max().max()}")
         self.logger.info("GUM model run complete. Starting postprocessing.")
+        if progress_report:
+            progress_report({"status": "running", "stage": "postprocess", "overall_step": 4, "overall_total": 5, "message": "Postprocessing results"})
         self.postprocessing(preprocesser, parent_dir)
         self.logger.info("Finished synthesis.")
 
@@ -260,4 +262,3 @@ if __name__ == "__main__":
     args = parameter_parser()
     
     privsyn_main(args)
-

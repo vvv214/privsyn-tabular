@@ -7,7 +7,7 @@ import math
 import copy
 import shutil
 import logging
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, Callable, Optional
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -50,6 +50,7 @@ async def run_synthesis(
     update_rate_method: str = 'U4',
     update_rate_initial: float = 1.0,
     update_iterations: int = 50,
+    progress_report: Optional[Callable[[Dict[str, Any]], None]] = None,
 ) -> Tuple[str, str]: # Returns path to synthesized CSV and path to original preprocessed data dir
     """
     Runs the data synthesis process using the PrivSyn logic.
@@ -93,6 +94,8 @@ async def run_synthesis(
 
     # 5. Instantiate data_preprocessor_common and load data
     logger.info("Instantiating data_preprocessor_common and loading data.")
+    if progress_report:
+        progress_report({"status": "running", "stage": "preprocess", "overall_step": 1, "overall_total": 5, "message": "Preprocessing data"})
     data_preprocesser = data_preporcesser_common(args)
     df_processed, domain_processed, preprocesser_divide = data_preprocesser.load_data(
         X_num_raw,
@@ -108,6 +111,8 @@ async def run_synthesis(
     privsyn_result = privsyn_main(args, df_processed, domain_processed, total_rho)
     privsyn_generator = privsyn_result["privsyn_generator"]
     logger.info("PrivSyn generator initialized.")
+    if progress_report:
+        progress_report({"status": "running", "stage": "marginal_selection", "overall_step": 2, "overall_total": 5, "message": "Marginal selection complete"})
 
     # 7. Create temporary output directory for synthesis results
     temp_output_dir = os.path.join(project_root, "temp_synthesis_output", dataset_name)
@@ -116,7 +121,9 @@ async def run_synthesis(
 
     # 8. Call privsyn_generator.syn
     logger.info(f"Calling privsyn_generator.syn to perform synthesis for {n_sample} samples.")
-    privsyn_generator.syn(n_sample, data_preprocesser, temp_output_dir)
+    if progress_report:
+        progress_report({"status": "running", "stage": "consistency", "overall_step": 3, "overall_total": 5, "message": "Consistency + update starting"})
+    privsyn_generator.syn(n_sample, data_preprocesser, temp_output_dir, progress_report=progress_report)
     logger.info("Synthesis complete.")
 
     # 9. Retrieve synthesized_df, rename columns, and save to CSV
@@ -134,5 +141,7 @@ async def run_synthesis(
     logger.info(f"Synthesized data saved to: {synthesized_csv_path}")
 
     # 10. Return paths to synthesized CSV and original preprocessed data dir
+    if progress_report:
+        progress_report({"status": "running", "stage": "save", "overall_step": 5, "overall_total": 5, "message": "Saving outputs"})
     logger.info("Synthesis process finished. Returning paths.")
     return synthesized_csv_path, data_dir
