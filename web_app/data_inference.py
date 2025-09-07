@@ -62,19 +62,39 @@ def infer_data_metadata(df: pd.DataFrame, target_column: str = 'y_attr') -> dict
     cat_feature_count = 0
 
     for col in df.columns:
-        # Heuristic for categorical vs. numerical
-        # If unique values are few (e.g., < 50 and < 5% of total rows), treat as categorical
-        if pd.api.types.is_numeric_dtype(df[col]) and df[col].nunique() > 50 and df[col].nunique() > len(df) * 0.05:
-            # Treat as numerical
-            num_feature_count += 1
-            X_num_cols.append(col)
-            # For domain.json, use nunique for numerical as per bank example
-            domain_data[col] = {"type": "numerical", "size": df[col].nunique()}
-        else:
-            # Treat as categorical (strings, objects, or numerical with few unique values)
+        # Improved heuristic for categorical vs. numerical classification
+        is_numeric = pd.api.types.is_numeric_dtype(df[col])
+        unique_values = df[col].nunique()
+        total_rows = len(df)
+
+        # Default to categorical for non-numeric types
+        is_categorical = not is_numeric
+
+        if is_numeric:
+            # Treat as categorical if it's an integer type with few unique values, suggesting a categorical encoding
+            if pd.api.types.is_integer_dtype(df[col]):
+                if unique_values < 20 or (unique_values / total_rows < 0.05 and unique_values < 100):
+                    is_categorical = True
+
+            # Floats are generally treated as numerical unless they have very few unique values
+            elif pd.api.types.is_float_dtype(df[col]):
+                if unique_values < 10:
+                    is_categorical = True
+                else:
+                    is_categorical = False # Explicitly numerical
+            else: # Other numeric types
+                is_categorical = False
+
+        if is_categorical:
+            # Treat as categorical
             cat_feature_count += 1
             X_cat_cols.append(col)
             domain_data[col] = {"type": "categorical", "size": df[col].nunique()}
+        else:
+            # Treat as numerical
+            num_feature_count += 1
+            X_num_cols.append(col)
+            domain_data[col] = {"type": "numerical", "size": df[col].nunique()}
 
     info_data["n_num_features"] = num_feature_count
     info_data["n_cat_features"] = cat_feature_count

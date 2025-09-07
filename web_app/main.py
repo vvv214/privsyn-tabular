@@ -39,12 +39,12 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:5174", "https://www.privsyn.com"],  # Allow your frontend origin
+    allow_origins=["*"],  # Allow all origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-allow_origins_list = ["http://localhost:5173", "http://localhost:5174", "https://www.privsyn.com"]
+allow_origins_list = ["*"]
 logger.info(f"CORS allow_origins configured as: {repr(allow_origins_list)}")
 
 # Mount static files for the frontend
