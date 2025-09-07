@@ -17,13 +17,9 @@ function App() {
     rare_threshold: 0.002, // Default value
     n_sample: 1000, // Default value
     consist_iterations: 5,
-    non_negativity: 'N3',
     append: true,
     sep_syn: false,
     initialize_method: 'singleton',
-    update_method: 'S5',
-    update_rate_method: 'U4',
-    update_rate_initial: 1.0,
     update_iterations: 3,
   });
 
@@ -54,20 +50,6 @@ function App() {
 
   const handleFileChange = (e) => {
     setDataFile(e.target.files[0]); // Set the single data file
-  };
-
-  const loadSampleData = async () => {
-    try {
-      const response = await fetch('/adult.csv.zip');
-      const blob = await response.blob();
-      const file = new File([blob], 'adult.csv.zip', { type: 'application/zip' });
-      setDataFile(file);
-      setFormData(prev => ({ ...prev, dataset_name: 'adult_sample' }));
-      setMessage('Sample dataset (adult.csv.zip) loaded.');
-    } catch (error) {
-      console.error('Error loading sample data:', error);
-      setError('Failed to load sample data.');
-    }
   };
 
   
@@ -117,74 +99,48 @@ function App() {
   };
 
   const handleConfirmMetadata = async (uniqueId, confirmedDomainData, confirmedInfoData) => {
-    setMessage('Initiating data synthesis... This may take a few minutes.');
+    setMessage('Synthesizing data...');
     setError('');
-    setCurrentPage('result'); // Switch to a page that can show progress
 
     const data = new FormData();
     data.append('unique_id', uniqueId);
     data.append('confirmed_domain_data', JSON.stringify(confirmedDomainData));
     data.append('confirmed_info_data', JSON.stringify(confirmedInfoData));
 
+    // Append all synthesis parameters from formData
     for (const key in formData) {
       data.append(key, formData[key]);
     }
 
     try {
       const response = await axios.post(`${API_URL}/confirm_synthesis`, data, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       });
 
-      const { job_id, dataset_name } = response.data;
-      setMessage(`Synthesis job started with ID: ${job_id}. Polling for results...`);
+      const { message: responseMessage, dataset_name: returnedDatasetName } = response.data;
+      setMessage(responseMessage);
+      setDownloadUrl(`${API_URL}/download_synthesized_data/${returnedDatasetName}`);
 
-      const pollInterval = setInterval(async () => {
-        try {
-          const statusResponse = await axios.get(`${API_URL}/synthesis_status/${job_id}`);
-          const { status, error: jobError, stage, overall_step, overall_total, inner_step, inner_total, message: progressMessage } = statusResponse.data;
+      // Fetch the synthesized CSV for preview
+      const csvResponse = await axios.get(`${API_URL}/download_synthesized_data/${returnedDatasetName}`, { responseType: 'blob' });
 
-          if (status === 'completed') {
-            clearInterval(pollInterval);
-            setMessage('Synthesis complete! Fetching results...');
-            setDownloadUrl(`${API_URL}/download_synthesized_data/${dataset_name}`);
-
-            const csvResponse = await axios.get(`${API_URL}/download_synthesized_data/${dataset_name}`, { responseType: 'blob' });
-            Papa.parse(csvResponse.data, {
-              header: true,
-              skipEmptyLines: true,
-              complete: (results) => {
-                setSynthesizedDataHeaders(results.meta.fields || []);
-                setSynthesizedDataPreview(results.data.slice(0, 10));
-                handleEvaluate(['tvd']);
-              },
-              error: (err) => {
-                console.error("CSV parsing error:", err);
-                setError("Failed to parse synthesized data for preview.");
-              }
-            });
-          } else if (status === 'failed') {
-            clearInterval(pollInterval);
-            setError(`Synthesis failed: ${jobError}`);
-            setMessage('');
-          } else {
-            if (progressMessage) {
-              // Prefer detailed progress if available
-              const overall = overall_step && overall_total ? ` (step ${overall_step}/${overall_total})` : '';
-              const inner = inner_step && inner_total ? ` — iteration ${inner_step}/${inner_total}` : '';
-              setMessage(`${progressMessage}${overall}${inner}`);
-            } else if (stage && overall_step && overall_total) {
-              setMessage(`Synthesis in progress: ${stage} (${overall_step}/${overall_total})`);
-            } else {
-              setMessage(`Synthesis in progress... Status: ${status}`);
-            }
-          }
-        } catch (pollError) {
-          clearInterval(pollInterval);
-          console.error('Polling error:', pollError);
-          setError('Failed to get synthesis status.');
+      Papa.parse(csvResponse.data, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+          setSynthesizedDataHeaders(results.meta.fields || []);
+          setSynthesizedDataPreview(results.data.slice(0, 10)); // Show first 10 rows
+          setCurrentPage('result'); // Switch to result page
+          handleEvaluate(['query', 'tvd']); // Automatically trigger evaluation
+        },
+        error: (err) => {
+          console.error("CSV parsing error:", err);
+          setError("Failed to parse synthesized data for preview.");
           setMessage('');
         }
-      }, 5000); // Poll every 5 seconds
+      });
 
     } catch (err) {
       console.error('Confirmation and Synthesis error:', err);
@@ -232,12 +188,6 @@ function App() {
           
         <h1 className="mb-4 text-center">PrivSyn: A Tool for Differentially Private Data Synthesis</h1>
 
-        <p className="text-center mb-4">
-          This tool allows you to synthesize data with differential privacy.
-          Upload your dataset, and this tool will infer the metadata, which you can then confirm or correct.
-          After that, you can choose the synthesis parameters and generate a new, synthetic dataset.
-        </p>
-
         {message && <div className="alert alert-info mt-4">{message}</div>}
         {error && <div className="alert alert-danger mt-4">Error: {error}</div>}
 
@@ -266,7 +216,7 @@ function App() {
 
                 <div className="row mb-3">
                   <div className="col-md-4">
-                    <label htmlFor="epsilon" className="form-label">Epsilon (ε)</label>
+                    <label htmlFor="epsilon" className="form-label">Epsilon</label>
                     <input
                       type="number"
                       step="any"
@@ -277,10 +227,9 @@ function App() {
                       onChange={handleChange}
                       required
                     />
-                    <small className="text-muted">Privacy parameter; smaller is more private.</small>
                   </div>
                   <div className="col-md-4">
-                    <label htmlFor="delta" className="form-label">Delta (δ)</label>
+                    <label htmlFor="delta" className="form-label">Delta</label>
                     <input
                       type="number"
                       step="any"
@@ -291,7 +240,6 @@ function App() {
                       onChange={handleChange}
                       required
                     />
-                    <small className="text-muted">Privacy parameter; should be small.</small>
                   </div>
                   <div className="col-md-4">
                     <label htmlFor="n_sample" className="form-label">Number of Samples</label>
@@ -304,7 +252,6 @@ function App() {
                       onChange={handleChange}
                       required
                     />
-                    <small className="text-muted">Number of synthetic records to generate.</small>
                   </div>
                 </div>
 
@@ -319,17 +266,8 @@ function App() {
                     name="data_file"
                     onChange={handleFileChange}
                     accept=".csv,.zip"
+                    required
                   />
-                </div>
-                <div className="text-center my-3">
-                  <p className="mb-2">Or, use a sample dataset:</p>
-                  <button
-                    type="button"
-                    className="btn btn-outline-primary"
-                    onClick={loadSampleData}
-                  >
-                    Load Adult Sample Dataset
-                  </button>
                 </div>
 
                 {/* Advanced Settings Toggle */}
@@ -351,34 +289,27 @@ function App() {
                     <div className="row mb-3">
                       <div className="col-md-6">
                         <label htmlFor="method" className="form-label">Method</label>
-                        <select
-                          className="form-select"
+                        <input
+                          type="text"
+                          className="form-control"
                           id="method"
                           name="method"
                           value={formData.method}
                           onChange={handleChange}
-                          disabled
-                        >
-                          <option value="privsyn">PrivSyn</option>
-                        </select>
-                        <small className="text-muted">Currently, only the PrivSyn method is supported.</small>
+                          required
+                        />
                       </div>
                       <div className="col-md-6">
                         <label htmlFor="num_preprocess" className="form-label">Numerical Preprocess</label>
-                        <select
-                          className="form-select"
+                        <input
+                          type="text"
+                          className="form-control"
                           id="num_preprocess"
                           name="num_preprocess"
                           value={formData.num_preprocess}
                           onChange={handleChange}
                           required
-                        >
-                          <option value="uniform_kbins">Uniform K-Bins</option>
-                          <option value="exp_kbins">Exponential K-Bins</option>
-                          <option value="privtree">PrivTree</option>
-                          <option value="dawa">Dawa</option>
-                          <option value="none">None</option>
-                        </select>
+                        />
                       </div>
                     </div>
                     <div className="row mb-3">
@@ -394,7 +325,6 @@ function App() {
                           onChange={handleChange}
                           required
                         />
-                        <small className="text-muted">Threshold for merging rare categories.</small>
                       </div>
                       <div className="col-md-6">
                         <label htmlFor="consist_iterations" className="form-label">Consist Iterations</label>
@@ -407,22 +337,9 @@ function App() {
                           onChange={handleChange}
                           required
                         />
-                        <small className="text-muted">Number of iterations for marginal consistency.</small>
                       </div>
                     </div>
                     <div className="row mb-3">
-                      <div className="col-md-6">
-                        <label htmlFor="non_negativity" className="form-label">Non Negativity</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          id="non_negativity"
-                          name="non_negativity"
-                          value={formData.non_negativity}
-                          onChange={handleChange}
-                          required
-                        />
-                      </div>
                       <div className="col-md-6">
                         <label htmlFor="initialize_method" className="form-label">Initialize Method</label>
                         <input
@@ -431,47 +348,6 @@ function App() {
                           id="initialize_method"
                           name="initialize_method"
                           value={formData.initialize_method}
-                          onChange={handleChange}
-                          required
-                        />
-                      </div>
-                    </div>
-                    <div className="row mb-3">
-                      <div className="col-md-6">
-                        <label htmlFor="update_method" className="form-label">Update Method</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          id="update_method"
-                          name="update_method"
-                          value={formData.update_method}
-                          onChange={handleChange}
-                          required
-                        />
-                      </div>
-                      <div className="col-md-6">
-                        <label htmlFor="update_rate_method" className="form-label">Update Rate Method</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          id="update_rate_method"
-                          name="update_rate_method"
-                          value={formData.update_rate_method}
-                          onChange={handleChange}
-                          required
-                        />
-                      </div>
-                    </div>
-                    <div className="row mb-3">
-                      <div className="col-md-6">
-                        <label htmlFor="update_rate_initial" className="form-label">Update Rate Initial</label>
-                        <input
-                          type="number"
-                          step="any"
-                          className="form-control"
-                          id="update_rate_initial"
-                          name="update_rate_initial"
-                          value={formData.update_rate_initial}
                           onChange={handleChange}
                           required
                         />
@@ -549,65 +425,54 @@ function App() {
               <h3 className="mb-0">Synthesis Results for {formData.dataset_name}</h3>
             </div>
             <div className="card-body">
-              {!downloadUrl && !error && (
+              <div className="text-center">
+                  <a href={downloadUrl} download={`${formData.dataset_name}_synthesized.csv`} className="btn btn-primary mb-3">
+                    Download Synthesized Data
+                  </a>
+              </div>
+
+              <h4 className="mt-4 mb-3 text-center">Synthesized Data Preview (First 10 Rows)</h4>
+              {synthesizedDataPreview.length > 0 ? (
                 <div className="text-center">
-                  <div className="spinner-border text-primary" role="status">
-                    <span className="visually-hidden">Loading...</span>
-                  </div>
-                  <p className="mt-3">Synthesis in progress. This may take several minutes. Please do not refresh the page.</p>
-                </div>
-              )}
-              {downloadUrl && (
-                <div>
-                  <div className="text-center">
-                    <a href={downloadUrl} download={`${formData.dataset_name}_synthesized.csv`} className="btn btn-primary mb-3">
-                      Download Synthesized Data
-                    </a>
+                  <div className="table-responsive">
+                    <table className="table table-striped table-bordered table-hover d-inline-block">
+                    <thead>
+                      <tr>
+                        {synthesizedDataHeaders.map((header, index) => (
+                          <th key={index}>{header}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {synthesizedDataPreview.map((row, rowIndex) => (
+                        <tr key={rowIndex}>
+                          {synthesizedDataHeaders.map((header, colIndex) => (
+                            <td key={colIndex}>{row[header]}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                   </div>
 
-                  <h4 className="mt-4 mb-3 text-center">Synthesized Data Preview (First 10 Rows)</h4>
-                  {synthesizedDataPreview.length > 0 ? (
-                    <div className="text-center">
-                      <div className="table-responsive">
-                        <table className="table table-striped table-bordered table-hover d-inline-block">
-                          <thead>
-                            <tr>
-                              {synthesizedDataHeaders.map((header, index) => (
-                                <th key={index}>{header}</th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {synthesizedDataPreview.map((row, rowIndex) => (
-                              <tr key={rowIndex}>
-                                {synthesizedDataHeaders.map((header, colIndex) => (
-                                  <td key={colIndex}>{row[header]}</td>
-                                ))}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                </div>
+              ) : (
+                <p className="text-muted text-center">No data preview available.</p>
+              )}
+
+              <hr className="my-4" />
+
+              {Object.keys(evaluationResults).length > 0 && (
+                <div className="mt-4">
+                  <h5 className="mb-3 text-center">Evaluation Results:</h5>
+                  {Object.entries(evaluationResults).map(([method, result]) => (
+                    <div key={method} className="card mb-3">
+                      <div className="card-header bg-light">{method.replace('eval_', '').replace('_', '').toUpperCase()}</div>
+                      <div className="card-body">
+                        <pre className="card-text small text-start">{JSON.stringify(result, null, 2)}</pre>
                       </div>
                     </div>
-                  ) : (
-                    <p className="text-muted text-center">No data preview available.</p>
-                  )}
-
-                  <hr className="my-4" />
-
-                  {Object.keys(evaluationResults).length > 0 && (
-                    <div className="mt-4">
-                      <h5 className="mb-3 text-center">Evaluation Results:</h5>
-                      {Object.entries(evaluationResults).map(([method, result]) => (
-                        <div key={method} className="card mb-3">
-                          <div className="card-header bg-light">{method.replace('eval_', '').replace('_', '').toUpperCase()}</div>
-                          <div className="card-body">
-                            <pre className="card-text small text-start">{JSON.stringify(result, null, 2)}</pre>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  ))}
                 </div>
               )}
             </div>

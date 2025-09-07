@@ -28,7 +28,7 @@ class Domain:
 
         self.config[attr_name] = new_shape
 
-    def project(self, attrs): #返回attrs子集的domain
+    def project(self, attrs): # return the domain of a subset of attrs
         """ project the domain onto a subset of attributes
 
         :param attrs: the attributes to project onto
@@ -42,7 +42,7 @@ class Domain:
 
         return Domain(attrs, shape)
 
-    def marginalize(self, attrs): #返回剔除给定attrs的集合的domain
+    def marginalize(self, attrs): # return the domain of the set after removing the given attrs
         """ marginalize out some attributes from the domain (opposite of project)
 
         :param attrs: the attributes to marginalize out
@@ -52,7 +52,7 @@ class Domain:
 
         return self.project(proj)
 
-    def axes(self, attrs): #返回给定attrs的index
+    def axes(self, attrs): # return the index of the given attrs
         """ return the axes tuple for the given attributes
 
         :param attrs: the attributes
@@ -80,7 +80,7 @@ class Domain:
         >>> D1.merge(D2)
         Domain(['a','b','c'], [10,20,30])
         """
-        extra = other.marginalize(self.attrs) #剔除重复元素，返回一个domain
+        extra = other.marginalize(self.attrs) # remove duplicate elements and return a domain
 
         return Domain(self.attrs + extra.attrs, self.shape + extra.shape)
 
