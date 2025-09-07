@@ -356,6 +356,13 @@ def calculate_rho_allocate(x_num, x_cat, num_encode_type, num_threshold=100, cat
     # the output is the portion that each preprocess would be allocated
 
     if x_num is not None and x_cat is not None: 
+        # Guard against 1D or empty inputs
+        if isinstance(x_num, np.ndarray) and (x_num.ndim < 2 or x_num.shape[1] == 0):
+            x_num = None
+        if isinstance(x_cat, np.ndarray) and (x_cat.ndim < 2 or x_cat.shape[1] == 0):
+            x_cat = None
+    
+    if x_num is not None and x_cat is not None:
         num_unique_count = np.array([len(set(x_num[:,i])) for i in range(x_num.shape[1])])
         cat_unique_count = np.array([len(set(x_cat[:,i])) for i in range(x_cat.shape[1])])
         num_apply = (num_unique_count >= num_threshold)
@@ -379,6 +386,9 @@ def calculate_rho_allocate(x_num, x_cat, num_encode_type, num_threshold=100, cat
                 return 0, 0
     
     elif x_num is None and x_cat is not None:
+        # Guard
+        if isinstance(x_cat, np.ndarray) and (x_cat.ndim < 2 or x_cat.shape[1] == 0):
+            return 0, 0
         cat_unique_count = np.array([len(set(x_cat[:,i])) for i in range(x_cat.shape[1])])
         cat_apply = (cat_unique_count >= cat_threshold) 
 
@@ -388,6 +398,9 @@ def calculate_rho_allocate(x_num, x_cat, num_encode_type, num_threshold=100, cat
             return 0, 0
     
     elif x_cat is None and x_num is not None:
+        # Guard
+        if isinstance(x_num, np.ndarray) and (x_num.ndim < 2 or x_num.shape[1] == 0):
+            return 0, 0
         num_unique_count = np.array([len(set(x_num[:,i])) for i in range(x_num.shape[1])])
         num_apply = (num_unique_count >= num_threshold)
         if sum(num_apply) > 0:

@@ -85,8 +85,9 @@ def infer_data_metadata(df: pd.DataFrame, target_column: str = 'y_attr') -> dict
     df_num = df[X_num_cols] if X_num_cols else pd.DataFrame()
     df_cat = df[X_cat_cols] if X_cat_cols else pd.DataFrame()
 
-    X_num_np = df_num.values if not df_num.empty else np.array([])
-    X_cat_np = df_cat.astype(str).values if not df_cat.empty else np.array([])
+    # Return None when there are no corresponding columns to avoid ambiguous empty arrays downstream
+    X_num_np = df_num.values if not df_num.empty else None
+    X_cat_np = df_cat.astype(str).values if not df_cat.empty else None
 
     return {
         'X_cat': X_cat_np,

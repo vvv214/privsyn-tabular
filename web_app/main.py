@@ -103,7 +103,7 @@ async def synthesize_data(
     update_rate_method: str = Form('U4'),
     update_rate_initial: float = Form(1.0),
     update_iterations: int = Form(50),
-    data_file: UploadFile = File(..., description="Upload your dataset as a CSV or ZIP file."),
+    data_file: UploadFile | None = File(None, description="Upload your dataset as a CSV or ZIP file."),
     target_column: str = Form('y_attr', description="Name of the target column in your CSV. Defaults to 'y_attr'."),):
     logger.info(f"synthesize_data received: method={method}, dataset_name={dataset_name}, epsilon={epsilon}, delta={delta}, num_preprocess={num_preprocess}, rare_threshold={rare_threshold}, n_sample={n_sample}, consist_iterations={consist_iterations}, update_iterations={update_iterations}")
     """

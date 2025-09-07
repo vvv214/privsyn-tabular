@@ -28,6 +28,17 @@ class data_preporcesser_common():
 
         X_num = X_num_raw
         X_cat = X_cat_raw
+        # Normalize empty arrays to None to avoid shape errors later
+        if isinstance(X_num, np.ndarray):
+            if X_num.size == 0:
+                X_num = None
+            elif X_num.ndim == 1 and X_num.shape[0] == 0:
+                X_num = None
+        if isinstance(X_cat, np.ndarray):
+            if X_cat.size == 0:
+                X_cat = None
+            elif X_cat.ndim == 1 and X_cat.shape[0] == 0:
+                X_cat = None
         domain_for_clipping = {} # Initialize domain_for_clipping 
 
         # Load domain data (either user-provided or from file)

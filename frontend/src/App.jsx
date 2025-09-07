@@ -61,9 +61,29 @@ function App() {
       const resp = await axios.get(`${API_URL}/sample_dataset/adult`, { responseType: 'blob' });
       const blob = new Blob([resp.data], { type: 'application/zip' });
       const file = new File([blob], 'adult.csv.zip', { type: 'application/zip' });
+      // Populate dataset name and immediately infer metadata to move to next step automatically
+      const nextForm = { ...formData, dataset_name: 'adult' };
+      setFormData(nextForm);
       setDataFile(file);
-      setFormData(prev => ({ ...prev, dataset_name: 'adult' }));
-      setMessage('Sample loaded. Click "Infer Metadata & Synthesize" to continue.');
+
+      // Build FormData and call /synthesize immediately
+      const data = new FormData();
+      for (const key in nextForm) {
+        data.append(key, nextForm[key]);
+      }
+      data.append('target_column', 'y_attr');
+      data.append('data_file', file);
+
+      const response = await axios.post(`${API_URL}/synthesize`, data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      // Store inferred metadata and switch to confirmation page
+      setInferredUniqueId(response.data.unique_id);
+      setInferredDomainData(response.data.domain_data);
+      setInferredInfoData(response.data.info_data);
+      setCurrentPage('confirm_metadata');
+      setMessage('Sample loaded. Review and confirm metadata.');
     } catch (err) {
       console.error('Load sample error:', err);
       const detail = err.response?.data?.detail;
