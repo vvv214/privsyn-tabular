@@ -16,3 +16,4 @@ pytest
 playwright
 pytest-playwright
 requests
+httpx
