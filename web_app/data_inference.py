@@ -63,9 +63,8 @@ def infer_data_metadata(df: pd.DataFrame, target_column: str = 'y_attr') -> dict
 
     for col in df.columns:
         # Heuristic for categorical vs. numerical
-        # If a column has a numeric data type and more than 15 unique values, treat as numerical.
-        # This is a general heuristic and might need adjustment for specific datasets.
-        if pd.api.types.is_numeric_dtype(df[col]) and df[col].nunique() > 15:
+        # If unique values are few (e.g., < 50 and < 5% of total rows), treat as categorical
+        if pd.api.types.is_numeric_dtype(df[col]) and df[col].nunique() > 50 and df[col].nunique() > len(df) * 0.05:
             # Treat as numerical
             num_feature_count += 1
             X_num_cols.append(col)

@@ -36,14 +36,8 @@ sys.path.insert(0, project_root)
 from .synthesis_service import run_synthesis, Args # Import Args from synthesis_service
 import uuid # For generating unique IDs for temporary storage
 from .data_inference import infer_data_metadata, load_dataframe_from_uploaded_file
-from .tasks import run_synthesis_task
-import multiprocessing
 
 app = FastAPI()
-
-# Use a multiprocessing manager to create a shared dictionary for job results
-manager = multiprocessing.Manager()
-synthesis_jobs = manager.dict()
 
 app.add_middleware(
     CORSMiddleware,
@@ -344,21 +338,21 @@ async def confirm_synthesis(
         args = Args(**args_dict)
         log_memory_usage("confirm_synthesis_before_run_synthesis")
 
-        # Run synthesis in a background process
-        job_id = str(uuid.uuid4())
-        synthesis_jobs[job_id] = {"status": "running"}
-
-        process = multiprocessing.Process(
-            target=run_synthesis_task,
-            args=(args, synthesis_run_dir, X_num, X_cat, domain_data, info_data, job_id, synthesis_jobs)
+        # Run synthesis
+        synthesized_csv_path, _ = await run_synthesis( # original_data_dir_for_eval is no longer needed
+            args=args,
+            data_dir=synthesis_run_dir, # data_dir is still needed for synthesis output
+            X_num_raw=X_num,
+            X_cat_raw=X_cat,
+            confirmed_domain_data=domain_data,
+            confirmed_info_data=info_data
         )
-        process.start()
 
         # Store data for evaluation
         logger.info(f"Populating data_storage for dataset: {dataset_name}")
         data_storage[dataset_name] = {
-            "job_id": job_id,
-            "original_df": original_df,
+            "synthesized_csv_path": synthesized_csv_path,
+            "original_df": original_df, # Store original_df directly
             "method": synthesis_params["method"],
             "epsilon": synthesis_params["epsilon"],
             "delta": synthesis_params["delta"],
@@ -368,7 +362,7 @@ async def confirm_synthesis(
         logger.info(f"Current data_storage keys: {data_storage.keys()}")
         log_memory_usage("confirm_synthesis_before_return")
 
-        return JSONResponse(content={"message": "Data synthesis initiated successfully!", "job_id": job_id, "dataset_name": dataset_name})
+        return JSONResponse(content={"message": "Data synthesis initiated successfully!", "dataset_name": dataset_name})
     except Exception as e:
         logger.exception("Error during synthesis confirmation.")
         raise HTTPException(status_code=500, detail=f"Synthesis failed: {str(e)}")
@@ -376,28 +370,6 @@ async def confirm_synthesis(
         if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
             logger.info(f"Cleaned up temporary directory: {temp_dir}")
-
-@app.get("/synthesis_status/{job_id}")
-async def get_synthesis_status(job_id: str):
-    """
-    Checks the status of a synthesis job.
-    """
-    job = synthesis_jobs.get(job_id)
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found.")
-
-    if job["status"] == "completed":
-        dataset_name = None
-        for key, value in data_storage.items():
-            if value.get("job_id") == job_id:
-                dataset_name = key
-                break
-
-        if dataset_name:
-            data_storage[dataset_name]["synthesized_csv_path"] = job["path"]
-
-    return JSONResponse(content=job)
-
 
 @app.get("/download_synthesized_data/{dataset_name}")
 async def download_synthesized_data(dataset_name: str):
