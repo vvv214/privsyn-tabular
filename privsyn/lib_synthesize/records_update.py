@@ -39,6 +39,7 @@ class RecordUpdate:
 
     def generate_singleton_records(self, singleton):
         # Vectorized allocation according to cumulative distribution with exact total count
+        singleton.calculate_normalize_count()
         dist_cumsum = np.cumsum(singleton.normalize_count)
         boundaries = np.rint(dist_cumsum * self.num_records).astype(int)
         counts = np.diff(np.concatenate(([0], boundaries)))
