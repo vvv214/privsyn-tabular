@@ -33,6 +33,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 from .synthesis_service import run_synthesis, Args # Import Args from synthesis_service
 import uuid # For generating unique IDs for temporary storage
 from .data_inference import infer_data_metadata, load_dataframe_from_uploaded_file
+from fastapi import Response
 
 app = FastAPI()
 
@@ -66,6 +67,23 @@ async def read_root():
 @app.get("/hello/{name}")
 async def say_hello(name: str):
     return {"message": f"Hello, {name}"}
+
+@app.get("/sample_dataset/{name}")
+async def get_sample_dataset(name: str):
+    """
+    Serves a small sample dataset ZIP for quick try-out in the UI.
+    Currently supports: 'adult'.
+    """
+    if name != "adult":
+        raise HTTPException(status_code=404, detail="Sample dataset not found")
+    sample_path = os.path.join(project_root, "sample_data", "adult.csv.zip")
+    if not os.path.exists(sample_path):
+        raise HTTPException(status_code=404, detail="Sample dataset file missing on server")
+    return StreamingResponse(
+        io.FileIO(sample_path, "rb"),
+        media_type="application/zip",
+        headers={"Content-Disposition": "attachment; filename=adult.csv.zip"}
+    )
 
 @app.post("/synthesize")
 async def synthesize_data(

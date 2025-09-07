@@ -24,6 +24,7 @@ function App() {
   });
 
   const [dataFile, setDataFile] = useState(null); // Single file input for CSV
+  const [loadingSample, setLoadingSample] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const [message, setMessage] = useState('');
@@ -50,6 +51,27 @@ function App() {
 
   const handleFileChange = (e) => {
     setDataFile(e.target.files[0]); // Set the single data file
+  };
+
+  const handleLoadSample = async () => {
+    try {
+      setLoadingSample(true);
+      setMessage('Loading sample dataset (adult.csv.zip)...');
+      setError('');
+      const resp = await axios.get(`${API_URL}/sample_dataset/adult`, { responseType: 'blob' });
+      const blob = new Blob([resp.data], { type: 'application/zip' });
+      const file = new File([blob], 'adult.csv.zip', { type: 'application/zip' });
+      setDataFile(file);
+      setFormData(prev => ({ ...prev, dataset_name: 'adult' }));
+      setMessage('Sample loaded. Click "Infer Metadata & Synthesize" to continue.');
+    } catch (err) {
+      console.error('Load sample error:', err);
+      const detail = err.response?.data?.detail;
+      setError(typeof detail === 'string' ? detail : detail ? JSON.stringify(detail) : 'Failed to load sample dataset.');
+      setMessage('');
+    } finally {
+      setLoadingSample(false);
+    }
   };
 
   
@@ -271,6 +293,11 @@ function App() {
                     accept=".csv,.zip"
                     required
                   />
+                  <div className="mt-2">
+                    <button type="button" className="btn btn-outline-secondary btn-sm" onClick={handleLoadSample} disabled={loadingSample}>
+                      {loadingSample ? 'Loading sample...' : 'Load Sample (Adult)'}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Advanced Settings Toggle */}
