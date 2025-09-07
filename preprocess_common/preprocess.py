@@ -183,6 +183,7 @@ class discretizer():
 
 class rare_merger():
     def __init__(self, rho, output_type = 'ordinal', rare_threshold=0.002, unique_threshold=100, default_rare_encode_value = 'R'):
+        self.logger = logging.getLogger("preprocess_common.rare_merger")
         self.rho = rho
         self.output_type = output_type
         self.unique_threshold = unique_threshold
@@ -257,7 +258,7 @@ class rare_merger():
                     x[x == k] = self.default_rare_encode_value
                 # encoded_data[:, i] = x
         else:
-            print('No need for merge')
+            self.logger.debug('No need for merge')
         
         encoded_data = self.ordinal_encoder.transform(encoded_data)
         np.nan_to_num(encoded_data, nan=0)
@@ -300,9 +301,9 @@ class rare_merger():
                     self.rare_values.append(rare_value)
                     # encoded_data[:, i] = x
             else:
-                print(f'No need for merge under threshold {self.rare_threshold}')
+                self.logger.debug(f'No need for merge under threshold {self.rare_threshold}')
         else:
-            print(f'No need for merge under threshold {self.rare_threshold}')
+            self.logger.debug(f'No need for merge under threshold {self.rare_threshold}')
         
         if self.output_type == 'ordinal':
             self.ordinal_encoder = sklearn.preprocessing.OrdinalEncoder(
