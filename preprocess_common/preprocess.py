@@ -5,6 +5,7 @@
 ###################################################################
 
 import numpy as np 
+import logging
 import pandas as pd
 import sklearn
 import sklearn.preprocessing
@@ -17,6 +18,7 @@ def laplace_noise(Lambda):
 
 class discretizer():
     def __init__(self, bins_method, rho, bin_number=100, ord = True):
+        self.logger = logging.getLogger("preprocess_common.discretizer")
         self.bins_method = bins_method
         self.rho = rho
         self.bin_number = bin_number
@@ -61,7 +63,7 @@ class discretizer():
             else: 
                 self.kbin_encoder.fit(data[:, self.columns_for_kbins])
         else:
-            print('No need for binning')
+            self.logger.debug('No need for binning')
 
         
         return None
@@ -220,9 +222,9 @@ class rare_merger():
                             rare_value.append(k)
                     self.rare_values.append(rare_value)
             else:
-                print(f'No need for merge under threshold {self.rare_threshold}')
+                self.logger.debug(f'No need for merge under threshold {self.rare_threshold}')
         else:
-            print(f'No need for merge under threshold {self.rare_threshold}')
+            self.logger.debug(f'No need for merge under threshold {self.rare_threshold}')
         
         if self.output_type == 'ordinal':
             self.ordinal_encoder = sklearn.preprocessing.OrdinalEncoder(
@@ -335,7 +337,7 @@ class rare_merger():
                 id = (x == self.default_rare_encode_value)
                 x[id] = np.random.choice(self.rare_values[i], size=sum(id), replace=True)
         else:
-            print('No need for decode')
+            self.logger.debug('No need for decode')
         
         return decoded_data
 

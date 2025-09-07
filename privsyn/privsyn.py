@@ -6,8 +6,6 @@
 #####################################################################
 
 import sys
-target_path = "./"
-sys.path.append(target_path)
 
 import numpy as np
 import pandas as pd

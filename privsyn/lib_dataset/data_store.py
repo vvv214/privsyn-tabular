@@ -4,10 +4,18 @@ import os
 import privsyn.config as config
 
 
+import os
+
 class DataStore:
     def __init__(self, args):
         self.args = args
-        self.parent_dir = 'exp/'+ str(self.args['dataset'])+ '/' + str(self.args['method'])+'/'+str(self.args['epsilon']) + '_' + str(self.args['num_preprocess']) + '_' + str(self.args['rare_threshold'])
+        # Allow override via args.output_dir or PRIVSYN_OUTPUT_DIR
+        base_dir = getattr(self.args, 'output_dir', None) if hasattr(self.args, '__dict__') else self.args.get('output_dir') if isinstance(self.args, dict) else None
+        base_dir = base_dir or os.getenv('PRIVSYN_OUTPUT_DIR')
+        if base_dir:
+            self.parent_dir = os.path.join(base_dir, str(self.args['dataset']))
+        else:
+            self.parent_dir = 'exp/'+ str(self.args['dataset'])+ '/' + str(self.args['method'])+'/'+str(self.args['epsilon']) + '_' + str(self.args['num_preprocess']) + '_' + str(self.args['rare_threshold'])
         self.determine_data_path()
         self.generate_folder() 
     

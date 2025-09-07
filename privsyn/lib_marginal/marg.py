@@ -1,4 +1,5 @@
 import numpy as np
+import os
 
 class Marginal:
     def __init__(self, marg_domain, dataset_domain):
@@ -59,13 +60,19 @@ class Marginal:
 
     def count_records(self, records):
         # actutally same as dataset.datavector if order of marginal expressions are same
+        use_gpu = os.getenv('PRIVSYN_USE_CUPY') == '1'
+        if use_gpu:
+            try:
+                import cupy as cp
+                enc = cp.asarray(records[:, self.attributes_index])
+                encode_records = enc.dot(cp.asarray(self.encode_num))
+                bc = cp.bincount(cp.clip(encode_records, 0, self.num_key - 1), minlength=self.num_key)
+                self.count = cp.asnumpy(bc)
+                return
+            except Exception:
+                pass
 
-        encode_key,count_num = np.unique(records[:, self.attributes_index], return_counts=True)
-
-        encode_records = np.matmul(
-            records[:, self.attributes_index], self.encode_num)
-        # encode_records = records[:, self.attributes_index]
-
+        encode_records = np.matmul(records[:, self.attributes_index], self.encode_num)
         self.count = np.bincount(np.clip(encode_records, 0, self.num_key - 1), minlength=self.num_key)
 
 
@@ -124,8 +131,16 @@ class Marginal:
         return encode_num
 
     def count_records_general(self, records):
-        encode_records = np.matmul(
-            records[:, self.attributes_index], self.encode_num)
+        use_gpu = os.getenv('PRIVSYN_USE_CUPY') == '1'
+        if use_gpu:
+            try:
+                import cupy as cp
+                enc = cp.asarray(records[:, self.attributes_index])
+                encode_records = enc.dot(cp.asarray(self.encode_num))
+                return cp.asnumpy(cp.bincount(cp.clip(encode_records, 0, self.num_key - 1), minlength=self.num_key))
+            except Exception:
+                pass
+        encode_records = np.matmul(records[:, self.attributes_index], self.encode_num)
         count = np.bincount(np.clip(encode_records, 0, self.num_key - 1), minlength=self.num_key)
 
         return count
@@ -194,8 +209,19 @@ class Marginal:
 
         # Truncate bigger_marg.count to bigger_marg.num_key to match encode_tuple_key length
         truncated_bigger_marg_count = bigger_marg.count[:bigger_marg.num_key]
-        self.summations[:, index] = np.bincount(
-            encode_tuple_key, weights=truncated_bigger_marg_count, minlength=self.num_key)
+        if os.getenv('PRIVSYN_USE_CUPY') == '1':
+            try:
+                import cupy as cp
+                key_cp = cp.asarray(encode_tuple_key)
+                w_cp = cp.asarray(truncated_bigger_marg_count)
+                res = cp.bincount(key_cp, weights=w_cp, minlength=self.num_key)
+                self.summations[:, index] = cp.asnumpy(res)
+            except Exception:
+                self.summations[:, index] = np.bincount(
+                    encode_tuple_key, weights=truncated_bigger_marg_count, minlength=self.num_key)
+        else:
+            self.summations[:, index] = np.bincount(
+                encode_tuple_key, weights=truncated_bigger_marg_count, minlength=self.num_key)
 
         # for i in range(self.num_key):
         #     key_index = np.where(encode_tuple_key == i)[0]

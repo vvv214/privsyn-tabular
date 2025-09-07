@@ -1,5 +1,6 @@
 import numpy as np 
 import pandas as pd
+import logging
 import os
 import json
 import math
@@ -9,6 +10,7 @@ from util.rho_cdp import cdp_rho
 
 class data_preporcesser_common():
     def __init__(self, args):
+        self.logger = logging.getLogger("preprocess_common.load_data_common")
         self.num_encoder = None
         self.cat_encoder = None
         self.num_col = 0
@@ -22,7 +24,7 @@ class data_preporcesser_common():
 
         num_prep = self.args.num_preprocess
         rare_threshold = self.args.rare_threshold
-        print(f'Numerical discretizer is {num_prep}')
+        self.logger.info(f'Numerical discretizer is {num_prep}')
 
         X_num = X_num_raw
         X_cat = X_cat_raw
@@ -36,8 +38,8 @@ class data_preporcesser_common():
             # If it is, it means domain.json is expected from disk, which is inconsistent with in-memory data
             raise ValueError("Domain data must be provided via user_domain_data when X_num_raw and X_cat_raw are used.")
         
-        print(f"X_num shape: {X_num.shape if X_num is not None else None}")
-        print(f"X_cat shape: {X_cat.shape if X_cat is not None else None}")
+        self.logger.debug(f"X_num shape: {X_num.shape if X_num is not None else None}")
+        self.logger.debug(f"X_cat shape: {X_cat.shape if X_cat is not None else None}")
         
         num_divide, cat_divide = calculate_rho_allocate(X_num, X_cat, num_prep)
 
@@ -51,7 +53,7 @@ class data_preporcesser_common():
         domain_for_clipping = user_domain_data if user_domain_data is not None else domain
 
         if X_num is not None:
-            print("Entering clipping loop")
+            self.logger.debug("Entering clipping loop")
             # Apply clipping based on user_domain_data for numerical features
             for key, value in domain_for_clipping.items(): # Use domain_for_clipping
                 if key.startswith('num_attr_') and isinstance(value, dict) and 'min' in value and 'max' in value:
@@ -76,7 +78,7 @@ class data_preporcesser_common():
             X_cat = self.cat_encoder.fit_transform(X_cat).astype(int)
             self.cat_col = X_cat.shape[1] if X_cat.ndim > 1 and X_cat.shape[1] > 0 else 0
 
-        print("Defining domain_for_clipping")
+        self.logger.debug("Defining domain_for_clipping")
 
         # Get actual column names from user_info_data
         num_col_names_actual = user_info_data.get("num_columns", [])
@@ -102,7 +104,7 @@ class data_preporcesser_common():
                 else:
                     # This should ideally not happen if domain_data is well-formed
                     # Log an error or raise an exception if a column is missing from domain_data
-                    print(f"Warning: Column '{col_name}' not found or 'size' missing in domain data. Skipping.")
+                    self.logger.warning(f"Column '{col_name}' not found or 'size' missing in domain data. Skipping.")
             domain = domain_list # Update the 'domain' variable to be returned
     
         if df.empty or df.shape[1] == 0:
@@ -127,18 +129,18 @@ class data_preporcesser_common():
                     # Only apply clipping if it's a KBinsDiscretizer (i.e., num_prep was 'uniform_kbins')
                     if isinstance(self.num_encoder, discretizer) and hasattr(self.num_encoder, 'encoder') and hasattr(self.num_encoder.encoder, 'n_bins_'):
                         x_num_clipped = x_num.copy() # Make a copy before clipping
-                        print(f"x_num before clip - min: {x_num_clipped.min()}, max: {x_num_clipped.max()}")
+                        self.logger.debug(f"x_num before clip - min: {x_num_clipped.min()}, max: {x_num_clipped.max()}")
                         max_bin_index = len(self.num_encoder.encoder.categories_[0]) - 2 # Correct max ordinal index
-                        print(f"max_bin_index: {max_bin_index}")
+                        self.logger.debug(f"max_bin_index: {max_bin_index}")
                         x_num_clipped = np.clip(x_num_clipped, 0, max_bin_index)
-                        print(f"x_num after clip - min: {x_num_clipped.min()}, max: {x_num_clipped.max()}")
+                        self.logger.debug(f"x_num after clip - min: {x_num_clipped.min()}, max: {x_num_clipped.max()}")
                         x_num = x_num_clipped # Use the clipped copy
                     
                     # Ensure x_num is a contiguous integer array before inverse_transform
                     x_num = np.ascontiguousarray(x_num).astype(int)
                     x_num = self.num_encoder.inverse_transform(x_num).astype(float)
                 except IndexError as e:
-                    print(f"Warning: IndexError during numerical inverse_transform. Returning None for numerical data. Error: {e}")
+                    self.logger.warning(f"IndexError during numerical inverse_transform. Returning None for numerical data. Error: {e}")
                     x_num = None # Return None for numerical data if inverse_transform fails
             if path is not None:
                 np.save(os.path.join(path, 'X_num_train.npy'), x_num)
