@@ -21,7 +21,7 @@ class RecordUpdate:
     def initialize_records(self, iterate_keys, method="random", singletons=None):
         #ZL: Danyu found this bug
         #self.records = np.empty([self.num_records, len(self.domain.attrs)], dtype=np.uint32)
-        if not self.df:
+        if self.df is None:
             self.records = np.zeros([self.num_records, len(self.domain.attrs)], dtype=np.uint32)
             self.df = pd.DataFrame(self.records, columns=self.domain.attrs)
 
@@ -38,16 +38,26 @@ class RecordUpdate:
 
 
     def generate_singleton_records(self, singleton):
-        record = np.empty(self.num_records, dtype=np.uint32)
+        # Vectorized allocation according to cumulative distribution with exact total count
         dist_cumsum = np.cumsum(singleton.normalize_count)
-        start = 0
-        
-        for index, value in enumerate(dist_cumsum):
-            end = int(round(value * self.num_records))
-            record[start: end] = index
-            start = end
+        boundaries = np.rint(dist_cumsum * self.num_records).astype(int)
+        counts = np.diff(np.concatenate(([0], boundaries)))
+        # Ensure non-negative and exact size
+        counts[counts < 0] = 0
+        deficit = self.num_records - int(counts.sum())
+        if deficit != 0:
+            # Adjust the largest bin by the deficit to maintain total size
+            arg = int(np.argmax(counts)) if counts.size > 0 else 0
+            counts[arg] = max(0, counts[arg] + deficit)
 
+        record = np.repeat(np.arange(counts.size, dtype=np.uint32), counts)
         np.random.shuffle(record)
+        # In rare rounding edge-cases, pad or trim to exact length
+        if record.size < self.num_records:
+            pad = np.full(self.num_records - record.size, record[-1] if record.size > 0 else 0, dtype=np.uint32)
+            record = np.concatenate([record, pad])
+        elif record.size > self.num_records:
+            record = record[: self.num_records]
 
         return record
 
