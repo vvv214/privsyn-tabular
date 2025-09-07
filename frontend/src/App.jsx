@@ -93,7 +93,8 @@ function App() {
 
     } catch (err) {
       console.error('Synthesis error:', err);
-      setError(err.response?.data?.detail || 'Failed to synthesize data. Check console for details.');
+      const detail = err.response?.data?.detail;
+      setError(typeof detail === 'string' ? detail : detail ? JSON.stringify(detail) : 'Failed to synthesize data. Check console for details.');
       setMessage('');
     }
   };
@@ -144,7 +145,8 @@ function App() {
 
     } catch (err) {
       console.error('Confirmation and Synthesis error:', err);
-      setError(err.response?.data?.detail || 'Failed to confirm metadata and synthesize data. Check console for details.');
+      const detail = err.response?.data?.detail;
+      setError(typeof detail === 'string' ? detail : detail ? JSON.stringify(detail) : 'Failed to confirm metadata and synthesize data. Check console for details.');
       setMessage('');
     }
   };
@@ -177,7 +179,8 @@ function App() {
       setEvaluationResults(response.data.results);
     } catch (err) {
       console.error('Evaluation error:', err);
-      setError(err.response?.data?.detail || 'Failed to run evaluations. Check console for details.');
+      const detail = err.response?.data?.detail;
+      setError(typeof detail === 'string' ? detail : detail ? JSON.stringify(detail) : 'Failed to run evaluations. Check console for details.');
       setMessage('');
     }
   };
