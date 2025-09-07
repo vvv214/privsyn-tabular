@@ -66,7 +66,13 @@ class PrivSyn():
         self.model = GUM_Mechanism(self.args, self.original_dataset, self.combined_marg_dict, self.one_way_marg_dict, progress_report=progress_report)
         self.logger.info("GUM_Mechanism initialized. Running GUM model.")
         self.synthesized_df = self.model.run(n_sample)
-        print(f"Synthesized DF min: {self.synthesized_df.min().min()}, max: {self.synthesized_df.max().max()}")
+        try:
+            min_val = self.synthesized_df.min().min()
+            max_val = self.synthesized_df.max().max()
+            self.logger.debug(f"Synthesized DF range: min={min_val}, max={max_val}")
+        except Exception:
+            # Be resilient if df is empty or non-numeric
+            self.logger.debug("Synthesized DF stats unavailable")
         self.logger.info("GUM model run complete. Starting postprocessing.")
         if progress_report:
             progress_report({"status": "running", "stage": "postprocess", "overall_step": 4, "overall_total": 5, "message": "Postprocessing results"})

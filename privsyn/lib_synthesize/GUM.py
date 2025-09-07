@@ -2,8 +2,6 @@ import numpy as np
 import pandas as pd
 import logging
 import math
-
-from functools import reduce
 from privsyn.lib_synthesize.converge_imp import sep_graph, clip_graph, append_attrs
 from privsyn.lib_synthesize.update_config import UpdateConfig
 from privsyn.lib_dataset.dataset import Dataset
