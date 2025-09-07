@@ -27,6 +27,8 @@ Thumbs.db
 data/
 exp/
 temp_synthesis_output/
+temp_bench_runs/
+privsyn/temp_data/dependency/bench_local
 
 # Frontend build output
 frontend/dist/
