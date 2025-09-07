@@ -38,3 +38,30 @@ jobs:
           npm ci
           npm run build
 
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install Python deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Install Playwright Browsers
+        uses: microsoft/playwright-github-action@v1
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+      - name: Run Playwright E2E via pytest
+        env:
+          E2E: '1'
+        run: |
+          pytest -q -k e2e --maxfail=1
