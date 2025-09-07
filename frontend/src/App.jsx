@@ -540,54 +540,65 @@ function App() {
               <h3 className="mb-0">Synthesis Results for {formData.dataset_name}</h3>
             </div>
             <div className="card-body">
-              <div className="text-center">
-                  <a href={downloadUrl} download={`${formData.dataset_name}_synthesized.csv`} className="btn btn-primary mb-3">
-                    Download Synthesized Data
-                  </a>
-              </div>
-
-              <h4 className="mt-4 mb-3 text-center">Synthesized Data Preview (First 10 Rows)</h4>
-              {synthesizedDataPreview.length > 0 ? (
+              {!downloadUrl && !error && (
                 <div className="text-center">
-                  <div className="table-responsive">
-                    <table className="table table-striped table-bordered table-hover d-inline-block">
-                    <thead>
-                      <tr>
-                        {synthesizedDataHeaders.map((header, index) => (
-                          <th key={index}>{header}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {synthesizedDataPreview.map((row, rowIndex) => (
-                        <tr key={rowIndex}>
-                          {synthesizedDataHeaders.map((header, colIndex) => (
-                            <td key={colIndex}>{row[header]}</td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  <div className="spinner-border text-primary" role="status">
+                    <span className="visually-hidden">Loading...</span>
+                  </div>
+                  <p className="mt-3">Synthesis in progress. This may take several minutes. Please do not refresh the page.</p>
+                </div>
+              )}
+              {downloadUrl && (
+                <div>
+                  <div className="text-center">
+                    <a href={downloadUrl} download={`${formData.dataset_name}_synthesized.csv`} className="btn btn-primary mb-3">
+                      Download Synthesized Data
+                    </a>
                   </div>
 
-                </div>
-              ) : (
-                <p className="text-muted text-center">No data preview available.</p>
-              )}
-
-              <hr className="my-4" />
-
-              {Object.keys(evaluationResults).length > 0 && (
-                <div className="mt-4">
-                  <h5 className="mb-3 text-center">Evaluation Results:</h5>
-                  {Object.entries(evaluationResults).map(([method, result]) => (
-                    <div key={method} className="card mb-3">
-                      <div className="card-header bg-light">{method.replace('eval_', '').replace('_', '').toUpperCase()}</div>
-                      <div className="card-body">
-                        <pre className="card-text small text-start">{JSON.stringify(result, null, 2)}</pre>
+                  <h4 className="mt-4 mb-3 text-center">Synthesized Data Preview (First 10 Rows)</h4>
+                  {synthesizedDataPreview.length > 0 ? (
+                    <div className="text-center">
+                      <div className="table-responsive">
+                        <table className="table table-striped table-bordered table-hover d-inline-block">
+                          <thead>
+                            <tr>
+                              {synthesizedDataHeaders.map((header, index) => (
+                                <th key={index}>{header}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {synthesizedDataPreview.map((row, rowIndex) => (
+                              <tr key={rowIndex}>
+                                {synthesizedDataHeaders.map((header, colIndex) => (
+                                  <td key={colIndex}>{row[header]}</td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
                     </div>
-                  ))}
+                  ) : (
+                    <p className="text-muted text-center">No data preview available.</p>
+                  )}
+
+                  <hr className="my-4" />
+
+                  {Object.keys(evaluationResults).length > 0 && (
+                    <div className="mt-4">
+                      <h5 className="mb-3 text-center">Evaluation Results:</h5>
+                      {Object.entries(evaluationResults).map(([method, result]) => (
+                        <div key={method} className="card mb-3">
+                          <div className="card-header bg-light">{method.replace('eval_', '').replace('_', '').toUpperCase()}</div>
+                          <div className="card-body">
+                            <pre className="card-text small text-start">{JSON.stringify(result, null, 2)}</pre>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
