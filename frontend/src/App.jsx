@@ -218,10 +218,10 @@ function App() {
   };
 
   return (
-    <div className="app-container w-100 px-3">
+    <main className="app-container w-100 px-3">
       <div className="mx-auto" style={{ maxWidth: 800, width: '100%' }}>
           
-        <h1 className="mb-4 text-center">PrivSyn Data Synthesizer</h1>
+        <h1 className="mb-4 text-center">PrivSyn: A Tool for Differentially Private Data Synthesis</h1>
 
         <p className="text-center mb-4">
           This tool allows you to synthesize data with differential privacy.
@@ -233,7 +233,7 @@ function App() {
         {error && <div className="alert alert-danger mt-4">Error: {error}</div>}
 
         {currentPage === 'form' && (
-          <div className="card shadow-sm">
+          <section className="card shadow-sm">
             <div className="card-header bg-primary text-white">
               <h3 className="mb-0">Synthesis Parameters</h3>
             </div>
@@ -520,7 +520,7 @@ function App() {
                 </div>
               </form>
             </div>
-          </div>
+          </section>
         )}
 
         {currentPage === 'confirm_metadata' && inferredDomainData && inferredInfoData && (
@@ -535,7 +535,7 @@ function App() {
         )}
 
         {currentPage === 'result' && (
-          <div className="card shadow-sm mt-5">
+          <section className="card shadow-sm mt-5">
             <div className="card-header bg-success text-white text-center">
               <h3 className="mb-0">Synthesis Results for {formData.dataset_name}</h3>
             </div>
@@ -602,10 +602,10 @@ function App() {
                 </div>
               )}
             </div>
-          </div>
+          </section>
         )}
       </div>
-    </div>
+    </main>
   );
 }
 
