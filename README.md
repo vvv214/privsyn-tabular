@@ -74,6 +74,28 @@ To get started with PrivSyn, follow these steps:
     ```
     The frontend will typically run on `http://localhost:5174` (or another port as indicated by Vite).
 
+### 1.1 End-to-End Test (Frontend + Backend, optional)
+
+We provide a Playwright-based E2E test that drives the frontend against a live backend.
+
+One-time setup:
+
+```
+pip install -r requirements.txt
+python -m playwright install
+cd frontend && npm install && cd ..
+```
+
+Run the E2E test (requires free ports 8001 and 5174):
+
+```
+E2E=1 pytest -q -k e2e
+```
+
+Notes:
+- The test sets `VITE_API_BASE_URL` to `http://localhost:8001` and starts both servers.
+- It uploads `sample_data/adult.csv.zip`, confirms inferred metadata, waits for synthesis to complete, and verifies the download link and preview table.
+
 #### Memory Usage Monitoring (Local)
 
 When running the backend locally, you can observe memory peak usage in the terminal where the `uvicorn` server is running. We've added logging statements to `web_app/main.py` to output memory usage at key stages.

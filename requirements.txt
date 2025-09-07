@@ -12,3 +12,7 @@ tomli_w
 category_encoders
 gunicorn
 psutil
+pytest
+playwright
+pytest-playwright
+requests
