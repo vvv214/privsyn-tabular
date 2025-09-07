@@ -72,9 +72,8 @@ def handle_isolated_attrs(dataset_domain, selected_attrs, indif_df, marginals, m
             match_df = match_missing_df.loc[(match_missing_df["first_attr"].isin(selected_attrs)) | (
                 match_missing_df["second_attr"].isin(selected_attrs))]
             match_df.reset_index(drop=True, inplace=True)
-
             if match_df.empty:
-                marginals.append((attr, ))
+                marginals.append((attr,))
             else:
                 marginals.append(
                     (match_df.loc[0, "first_attr"], match_df.loc[0, "second_attr"]))

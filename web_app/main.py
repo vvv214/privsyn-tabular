@@ -12,6 +12,7 @@ import json
 import importlib # For dynamic import of evaluation scripts
 from .data_comparison import calculate_tvd_metrics
 from fastapi.staticfiles import StaticFiles
+import zipfile
 
 import psutil # For memory monitoring
 
@@ -156,10 +157,24 @@ async def synthesize_data(
 
     try:
         if data_file is None:
-            raise HTTPException(status_code=400, detail="Data file is required for synthesis unless in debug mode.")
-        # 1. Load the uploaded file into a DataFrame
-        logger.info("Attempting to load dataframe from uploaded file.")
-        df = load_dataframe_from_uploaded_file(data_file)
+            # Allow server-side sample loading when dataset_name matches a built-in sample
+            if dataset_name == "adult":
+                sample_path = os.path.join(project_root, "sample_data", "adult.csv.zip")
+                if not os.path.exists(sample_path):
+                    raise HTTPException(status_code=404, detail="Sample dataset file missing on server")
+                logger.info("Loading built-in sample dataset: adult")
+                with zipfile.ZipFile(sample_path, 'r') as zf:
+                    csv_files = [f for f in zf.namelist() if f.endswith('.csv')]
+                    if not csv_files:
+                        raise HTTPException(status_code=500, detail="No CSV found in sample ZIP")
+                    with zf.open(csv_files[0]) as csv_file:
+                        df = pd.read_csv(csv_file)
+            else:
+                raise HTTPException(status_code=400, detail="Data file is required for synthesis unless using a built-in sample or debug mode.")
+        else:
+            # 1. Load the uploaded file into a DataFrame
+            logger.info("Attempting to load dataframe from uploaded file.")
+            df = load_dataframe_from_uploaded_file(data_file)
         log_memory_usage("synthesize_data_after_df_load")
         logger.info(f"DataFrame loaded. Shape: {df.shape}")
 

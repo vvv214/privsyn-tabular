@@ -54,28 +54,30 @@ function App() {
   };
 
   const handleLoadSample = async () => {
+    // Instantly select built-in sample and kick off inference (no download to frontend)
+    const nextForm = { ...formData, dataset_name: 'adult' };
+    setFormData(nextForm);
+    setDataFile(null);
+    setError('');
+
+    // Mirror the infer flow without requiring a file
+    setMessage('Inferring metadata...');
+    setDownloadUrl('');
+    setSynthesizedDataPreview([]);
+    setSynthesizedDataHeaders([]);
+    setEvaluationResults({});
+
+    const data = new FormData();
+    for (const key in nextForm) {
+      data.append(key, nextForm[key]);
+    }
+    data.append('target_column', 'y_attr');
+
     try {
-      setLoadingSample(true);
-      setMessage('Loading sample dataset (adult.csv.zip)...');
-      setError('');
-      const resp = await axios.get(`${API_URL}/sample_dataset/adult`, { responseType: 'blob' });
-      const blob = new Blob([resp.data], { type: 'application/zip' });
-      const file = new File([blob], 'adult.csv.zip', { type: 'application/zip' });
-      // Populate dataset name and immediately infer metadata to move to next step automatically
-      const nextForm = { ...formData, dataset_name: 'adult' };
-      setFormData(nextForm);
-      setDataFile(file);
-
-      // Build FormData and call /synthesize immediately
-      const data = new FormData();
-      for (const key in nextForm) {
-        data.append(key, nextForm[key]);
-      }
-      data.append('target_column', 'y_attr');
-      data.append('data_file', file);
-
       const response = await axios.post(`${API_URL}/synthesize`, data, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       });
 
       // Store inferred metadata and switch to confirmation page
@@ -83,14 +85,12 @@ function App() {
       setInferredDomainData(response.data.domain_data);
       setInferredInfoData(response.data.info_data);
       setCurrentPage('confirm_metadata');
-      setMessage('Sample loaded. Review and confirm metadata.');
+      setMessage('Sample selected. Review and confirm metadata.');
     } catch (err) {
-      console.error('Load sample error:', err);
+      console.error('Load sample -> infer error:', err);
       const detail = err.response?.data?.detail;
-      setError(typeof detail === 'string' ? detail : detail ? JSON.stringify(detail) : 'Failed to load sample dataset.');
+      setError(typeof detail === 'string' ? detail : detail ? JSON.stringify(detail) : 'Failed to infer metadata for sample.');
       setMessage('');
-    } finally {
-      setLoadingSample(false);
     }
   };
 
@@ -113,8 +113,8 @@ function App() {
 
     if (dataFile) {
       data.append('data_file', dataFile); // Append the single data file
-    } else {
-      setError('Please upload a data file.');
+    } else if (formData.dataset_name !== 'adult' && formData.dataset_name !== 'debug_dataset') {
+      setError('Please upload a data file, or choose the built-in sample.');
       setMessage('');
       return;
     }
