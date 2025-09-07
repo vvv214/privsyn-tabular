@@ -29,6 +29,7 @@ exp/
 temp_synthesis_output/
 temp_bench_runs/
 privsyn/temp_data/dependency/bench_local
+privsyn/temp_data/dependency/
 
 # Frontend build output
 frontend/dist/

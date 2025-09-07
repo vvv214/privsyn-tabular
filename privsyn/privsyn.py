@@ -6,7 +6,7 @@
 #####################################################################
 
 import sys
-target_path="./"
+target_path = "./"
 sys.path.append(target_path)
 
 import numpy as np
@@ -16,19 +16,12 @@ import math
 import copy
 
 from privsyn.parameter_parser import parameter_parser
-from privsyn.lib_synthesize.converge_imp import sep_graph, clip_graph, append_attrs
-from privsyn.lib_synthesize.update_config import UpdateConfig
 from privsyn.lib_dataset.dataset import Dataset
 from privsyn.lib_marginal.marg import Marginal
-from privsyn.lib_marginal.consistent import Consistenter
 from privsyn.lib_marginal.marg_determine import marginal_selection, marginal_combine
-from privsyn.lib_marginal.filter import Filter
 from privsyn.lib_dataset.data_store import DataStore
 from privsyn.lib_dataset.domain import Domain
 from privsyn.lib_synthesize.GUM import GUM_Mechanism
-from util.rho_cdp import cdp_rho
-
-from functools import reduce
 
 class PrivSyn():
     def __init__(self, args, df, domain, rho):

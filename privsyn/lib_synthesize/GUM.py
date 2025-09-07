@@ -4,12 +4,10 @@ import logging
 import math
 
 from functools import reduce
-from tqdm import tqdm
 from privsyn.lib_synthesize.converge_imp import sep_graph, clip_graph, append_attrs
 from privsyn.lib_synthesize.update_config import UpdateConfig
 from privsyn.lib_dataset.dataset import Dataset
 from privsyn.lib_marginal.consistent import Consistenter
-from privsyn.lib_marginal.marg import Marginal
 
 
 

@@ -17,35 +17,6 @@ from tqdm import tqdm
 import privsyn.config as config
 
 
-def transform_records_distinct_value(logger, df, dataset_domain):
-    '''
-    Replaces the attribute value with the index of the unique value on that attribute.
-    Fix the domain size at the same time.
-    
-    In our preprocessing step, this has already been done by ordinal encoding. 
-    Therefore, you do not need to apply this function before opeartion
-    '''
-    logger.info("transforming records")
-
-    distinct_shape = []
-    for attr_index, attr in enumerate(dataset_domain.attrs):
-        record = np.copy(df.loc[:, attr])
-        unique_value = np.unique(record)
-        distinct_shape.append(unique_value.size)
-
-        for index, value in enumerate(unique_value):
-            indices = np.where(record == value)[0]
-            # self.df.loc[indices, attr] = index
-            # df.value[indices, attr_index] = index
-            df.iloc[indices, attr_index] = index
-    dataset_domain.shape = tuple(distinct_shape)
-    dataset_domain.config = dict(
-        zip(dataset_domain.attrs, distinct_shape))
-    logger.info("transformed records")
-
-    return df
-
-
 def calculate_indif(logger, dataset, dataset_name, rho):
     logger.info("calculating pair indif")
 

@@ -22,15 +22,6 @@ class DataStore:
         for path in config.ALL_PATH:
             if not os.path.exists(path):
                 os.makedirs(path)
-    
-    def load_processed_data(self):
-        return pickle.load(open(config.PROCESSED_DATA_PATH + self.args['dataset_name'], 'rb'))
-    
-    def save_synthesized_records(self, records, save_path = None):
-        if save_path is None:
-            pickle.dump(records, open(self.synthesized_records_file, 'wb'))
-        else:
-            pickle.dump(records, open(os.path.join(save_path, '_'.join( (self.args['dataset_name'], str(self.args['epsilon'])) )), 'wb'))
         
     def save_marginal(self, marginals):
         os.makedirs(os.path.dirname(self.marginal_file), exist_ok=True)

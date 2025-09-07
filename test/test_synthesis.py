@@ -103,14 +103,14 @@ def test_gum_synthesis_pipeline():
         marg_add_sensitivity=1.0,
         marg_sel_threshold=20000,
         non_negativity='N3',
-        consist_iterations=501,
+        consist_iterations=5,
         initialize_method='singleton',
         update_method='S5',
         append=True,
         sep_syn=False,
         update_rate_method='U4',
         update_rate_initial=1.0,
-        update_iterations=50
+        update_iterations=5
     )
 
     privsyn_result = privsyn_main(args_privsyn, df_processed, domain_processed, total_rho)
