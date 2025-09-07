@@ -339,27 +339,33 @@ function App() {
                     <div className="row mb-3">
                       <div className="col-md-6">
                         <label htmlFor="method" className="form-label">Method</label>
-                        <input
-                          type="text"
-                          className="form-control"
+                        <select
+                          className="form-select"
                           id="method"
                           name="method"
                           value={formData.method}
                           onChange={handleChange}
                           required
-                        />
+                        >
+                          <option value="privsyn">privsyn</option>
+                        </select>
                       </div>
                       <div className="col-md-6">
                         <label htmlFor="num_preprocess" className="form-label">Numerical Preprocess</label>
-                        <input
-                          type="text"
-                          className="form-control"
+                        <select
+                          className="form-select"
                           id="num_preprocess"
                           name="num_preprocess"
                           value={formData.num_preprocess}
                           onChange={handleChange}
                           required
-                        />
+                        >
+                          <option value="uniform_kbins">uniform_kbins</option>
+                          <option value="exp_kbins">exp_kbins</option>
+                          <option value="privtree">privtree</option>
+                          <option value="dawa">dawa</option>
+                          <option value="none">none</option>
+                        </select>
                       </div>
                     </div>
                     <div className="row mb-3">

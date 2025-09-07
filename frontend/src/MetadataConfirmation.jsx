@@ -11,15 +11,31 @@ const MetadataConfirmation = ({ uniqueId, inferredDomainData, inferredInfoData, 
 
     
 
-    const handleDomainChange = (key, value, subKey = 'size') => {
+    const handleDomainChange = (key, subKey, value) => {
         setDomainData(prev => {
-            return {
+            const updatedDomain = {
                 ...prev,
                 [key]: {
                     ...prev[key],
-                    [subKey]: parseFloat(value) || 0 // Assuming 'size' is always numerical
+                    [subKey]: subKey === 'type' ? value : parseFloat(value) || 0
                 }
             };
+
+            // After changing the type, we need to recalculate the counts for n_num_features and n_cat_features
+            if (subKey === 'type') {
+                let num_count = 0;
+                let cat_count = 0;
+                Object.values(updatedDomain).forEach(v => {
+                    if (v.type === 'numerical') num_count++;
+                    else if (v.type === 'categorical') cat_count++;
+                });
+                setInfoData(prevInfo => ({
+                    ...prevInfo,
+                    n_num_features: num_count,
+                    n_cat_features: cat_count
+                }));
+            }
+            return updatedDomain;
         });
     };
 
@@ -71,44 +87,37 @@ const MetadataConfirmation = ({ uniqueId, inferredDomainData, inferredInfoData, 
                         </div>
                         <div className="card-body">
                             <div className="row">
-                                {Object.entries(domainData).map(([key, value]) => {
-                                    const labelText = key; // Use the actual column name as label
-                                    const isNumerical = value.type === 'numerical';
-                                    const isCategorical = value.type === 'categorical';
-
-                                    return (
-                                        <div className="col-md-6 mb-3 d-flex justify-content-center align-items-center flex-column" key={key}>
-                                            <label htmlFor={`domain_${key}`} className="form-label">{labelText}</label>
-                                            {isNumerical && (
-                                                <div className="d-flex flex-row align-items-center">
-                                                    <label htmlFor={`domain_${key}_size`} className="form-label me-2">Size:</label>
+                                {Object.entries(domainData).map(([key, value]) => (
+                                    <div className="col-md-6 mb-4" key={key}>
+                                        <div className="card h-100">
+                                            <div className="card-body">
+                                                <h5 className="card-title text-center mb-3">{key}</h5>
+                                                <div className="mb-2">
+                                                    <label htmlFor={`domain_${key}_type`} className="form-label">Type</label>
+                                                    <select
+                                                        id={`domain_${key}_type`}
+                                                        className="form-select"
+                                                        value={value.type}
+                                                        onChange={(e) => handleDomainChange(key, 'type', e.target.value)}
+                                                    >
+                                                        <option value="categorical">Categorical</option>
+                                                        <option value="numerical">Numerical</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label htmlFor={`domain_${key}_size`} className="form-label">{value.type === 'numerical' ? 'Unique Values' : 'Categories'}</label>
                                                     <input
                                                         type="number"
                                                         id={`domain_${key}_size`}
                                                         className="form-control"
                                                         value={value.size || 0}
-                                                        onChange={(e) => handleDomainChange(key, e.target.value, 'size')}
+                                                        onChange={(e) => handleDomainChange(key, 'size', e.target.value)}
                                                     />
                                                 </div>
-                                            )}
-                                            {isCategorical && (
-                                                <div className="d-flex flex-row align-items-center">
-                                                    <label htmlFor={`domain_${key}_size`} className="form-label me-2">Categories:</label>
-                                                    <input
-                                                        type="number"
-                                                        id={`domain_${key}_size`}
-                                                        className="form-control"
-                                                        value={value.size || 0}
-                                                        onChange={(e) => handleDomainChange(key, e.target.value, 'size')}
-                                                    />
-                                                </div>
-                                            )}
-                                            {/* Optional: Add a small text to clarify what 'size' means for each type */}
-                                            {isNumerical && <small className="text-muted">Number of unique values</small>}
-                                            {isCategorical && <small className="text-muted">Number of unique categories</small>}
+                                            </div>
                                         </div>
-                                    );
-                                })}
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     </div>
