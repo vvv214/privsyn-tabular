@@ -86,6 +86,9 @@ const MetadataConfirmation = ({ uniqueId, inferredDomainData, inferredInfoData, 
                             <h4 className="mb-0">Domain Information</h4>
                         </div>
                         <div className="card-body">
+                            <div className="alert alert-warning" role="alert">
+                                <strong>Note:</strong> The domain info below is inferred by looking at the data to improve usability. Strictly speaking, this is not differentially private. To satisfy DP, these domain settings should be specified data-agnostically using domain knowledge.
+                            </div>
                             <div className="row">
                                 {Object.entries(domainData).map(([key, value]) => (
                                     <div className="col-md-6 mb-4" key={key}>
