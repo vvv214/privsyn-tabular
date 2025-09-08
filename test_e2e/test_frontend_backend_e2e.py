@@ -24,6 +24,10 @@ def test_end_to_end_frontend_backend(tmp_path):
     env = os.environ.copy()
     env["VITE_API_BASE_URL"] = backend_url
 
+    popen_kwargs = {}
+    if sys.platform != "win32":
+        popen_kwargs["preexec_fn"] = os.setsid
+
     backend = subprocess.Popen(
         [sys.executable, "-m", "uvicorn", "web_app.main:app", "--port", "8001"],
         cwd=str(project_root),
@@ -31,6 +35,7 @@ def test_end_to_end_frontend_backend(tmp_path):
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
+        **popen_kwargs,
     )
 
     try:
@@ -43,6 +48,7 @@ def test_end_to_end_frontend_backend(tmp_path):
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
+            **popen_kwargs,
         )
 
         try:
