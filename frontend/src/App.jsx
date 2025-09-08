@@ -54,47 +54,18 @@ function App() {
   };
 
   const handleLoadSample = async () => {
-    // Instantly select built-in sample and kick off inference (no download to frontend)
+    // Select built-in sample and prepare state; do NOT auto-infer
     setLoadingSample(true);
     const nextForm = { ...formData, dataset_name: 'adult' };
     setFormData(nextForm);
     setDataFile(null);
     setError('');
-
-    // Mirror the infer flow without requiring a file
-    setMessage('Inferring metadata...');
     setDownloadUrl('');
     setSynthesizedDataPreview([]);
     setSynthesizedDataHeaders([]);
     setEvaluationResults({});
-
-    const data = new FormData();
-    for (const key in nextForm) {
-      data.append(key, nextForm[key]);
-    }
-    data.append('target_column', 'y_attr');
-
-    try {
-      const response = await axios.post(`${API_URL}/synthesize`, data, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-
-      // Store inferred metadata and switch to confirmation page
-      setInferredUniqueId(response.data.unique_id);
-      setInferredDomainData(response.data.domain_data);
-      setInferredInfoData(response.data.info_data);
-      setCurrentPage('confirm_metadata');
-      setMessage('Sample selected. Review and confirm metadata.');
-    } catch (err) {
-      console.error('Load sample -> infer error:', err);
-      const detail = err.response?.data?.detail;
-      setError(typeof detail === 'string' ? detail : detail ? JSON.stringify(detail) : 'Failed to infer metadata for sample.');
-      setMessage('');
-    } finally {
-      setLoadingSample(false);
-    }
+    setMessage('Sample selected. Review settings, then click Infer.');
+    setLoadingSample(false);
   };
 
   
