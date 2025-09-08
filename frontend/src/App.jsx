@@ -343,57 +343,23 @@ function App() {
                       </div>
                     </div>
                     <div className="row mb-3">
-                      <div className="col-md-6">
-                        <label htmlFor="rare_threshold" className="form-label">Rare Threshold</label>
-                        <input
-                          type="number"
-                          step="any"
-                          className="form-control"
-                          id="rare_threshold"
-                          name="rare_threshold"
-                          value={formData.rare_threshold}
-                          onChange={handleChange}
-                          required
-                        />
-                      </div>
-                      <div className="col-md-6">
-                        <label htmlFor="consist_iterations" className="form-label">Consist Iterations</label>
-                        <input
-                          type="number"
-                          className="form-control"
-                          id="consist_iterations"
-                          name="consist_iterations"
-                          value={formData.consist_iterations}
-                          onChange={handleChange}
-                          required
-                        />
-                      </div>
                     </div>
                     <div className="row mb-3">
-                      <div className="col-md-6">
-                        <label htmlFor="initialize_method" className="form-label">Initialize Method</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          id="initialize_method"
-                          name="initialize_method"
-                          value={formData.initialize_method}
-                          onChange={handleChange}
-                          required
-                        />
-                      </div>
-                      <div className="col-md-6">
-                        <label htmlFor="update_iterations" className="form-label">Update Iterations</label>
-                        <input
-                          type="number"
-                          className="form-control"
-                          id="update_iterations"
-                          name="update_iterations"
-                          value={formData.update_iterations}
-                          onChange={handleChange}
-                          required
-                        />
-                      </div>
+                      {formData.method === 'privsyn' && (
+                        <div className="col-md-6">
+                          <label htmlFor="update_iterations" className="form-label">Update Iterations</label>
+                          <input
+                            type="number"
+                            className="form-control"
+                            id="update_iterations"
+                            name="update_iterations"
+                            value={formData.update_iterations}
+                            onChange={handleChange}
+                            required
+                          />
+                          <div className="form-text">The more iterations the better the results, but the slower.</div>
+                        </div>
+                      )}
                     </div>
                     <div className="row mb-3">
                       <div className="col-md-6">
