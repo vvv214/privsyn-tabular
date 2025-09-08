@@ -9,4 +9,4 @@ source "$ROOT_DIR/.venv/bin/activate"
 
 # Run the FastAPI application with Gunicorn
 cd "$ROOT_DIR"
-gunicorn web_app.main:app --workers 1 --worker-class uvicorn.workers.UvicornWorker
+gunicorn web_app.main:app --workers 1 --worker-class uvicorn.workers.UvicornWorker --timeout 300
