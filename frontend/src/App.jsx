@@ -55,6 +55,7 @@ function App() {
 
   const handleLoadSample = async () => {
     // Instantly select built-in sample and kick off inference (no download to frontend)
+    setLoadingSample(true);
     const nextForm = { ...formData, dataset_name: 'adult' };
     setFormData(nextForm);
     setDataFile(null);
@@ -91,6 +92,8 @@ function App() {
       const detail = err.response?.data?.detail;
       setError(typeof detail === 'string' ? detail : detail ? JSON.stringify(detail) : 'Failed to infer metadata for sample.');
       setMessage('');
+    } finally {
+      setLoadingSample(false);
     }
   };
 
@@ -311,7 +314,7 @@ function App() {
                     name="data_file"
                     onChange={handleFileChange}
                     accept=".csv,.zip"
-                    required
+                    required={formData.dataset_name !== 'adult' && formData.dataset_name !== 'debug_dataset'}
                   />
                   <div className="mt-2">
                     <button type="button" className="btn btn-outline-secondary btn-sm" onClick={handleLoadSample} disabled={loadingSample}>

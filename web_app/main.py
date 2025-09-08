@@ -13,6 +13,7 @@ import importlib # For dynamic import of evaluation scripts
 from .data_comparison import calculate_tvd_metrics
 from fastapi.staticfiles import StaticFiles
 import zipfile
+import sys
 
 import psutil # For memory monitoring
 
