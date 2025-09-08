@@ -39,15 +39,22 @@ from fastapi import Response
 
 app = FastAPI()
 
+# Define allowed origins for CORS
+# Add the production domain, and local development domains.
+allow_origins_list = [
+    "https://www.privsyn.com",
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins
+    allow_origins=allow_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-allow_origins_list = ["*"]
-logger.info(f"CORS allow_origins configured as: {repr(allow_origins_list)}")
+logger.info(f"CORS allow_origins configured for: {repr(allow_origins_list)}")
 
 # Mount static files for the frontend
 # app.mount("/static", StaticFiles(directory="web_app/static"), name="static")
