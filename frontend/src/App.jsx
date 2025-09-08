@@ -15,12 +15,12 @@ function App() {
     delta: 1e-5, // Default value
     num_preprocess: 'uniform_kbins', // Default value
     rare_threshold: 0.002, // Default value
-    n_sample: 1000, // Default value
-    consist_iterations: 5,
+    n_sample: 200, // Conservative default for faster runs
+    consist_iterations: 3,
     append: true,
     sep_syn: false,
     initialize_method: 'singleton',
-    update_iterations: 3,
+    update_iterations: 2,
   });
 
   const [dataFile, setDataFile] = useState(null); // Single file input for CSV
