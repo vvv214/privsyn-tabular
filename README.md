@@ -74,6 +74,22 @@ To get started with PrivSyn, follow these steps:
     ```
     The frontend will typically run on `http://localhost:5174` (or another port as indicated by Vite).
 
+### Unit Tests (Python)
+
+Run the Python unit test suite:
+
+```
+pytest -q test/
+```
+
+Useful options:
+- Exclude slow tests: `pytest -q -m "not slow"`
+- Run a subset by keyword (e.g., API smoke): `pytest -q -k api_smoke`
+
+Tests use markers:
+- `slow`: long-running tests; exclude with `-m "not slow"`
+- `e2e`: frontend+backend end-to-end tests (see below)
+
 ### 1.1 End-to-End Test (Frontend + Backend, optional)
 
 We provide a Playwright-based E2E test that drives the frontend against a live backend.
@@ -95,6 +111,7 @@ E2E=1 pytest -q -k e2e
 Notes:
 - The test sets `VITE_API_BASE_URL` to `http://localhost:8001` and starts both servers.
 - It uploads `sample_data/adult.csv.zip`, confirms inferred metadata, waits for synthesis to complete, and verifies the download link and preview table.
+- E2E tests are marked `e2e`; you can exclude them from normal runs with `-m "not e2e"` or run only them with `-k e2e`.
 
 Convenience script:
 
