@@ -158,7 +158,7 @@ def undersample(raw_input_features, raw_labels, undersampled_rate):
     # take random 10 percent of the negative labelled data
     in_keep = np.random.permutation(np.sum(idx_negative_label))
     under_sampling_rate = undersampled_rate  # 0.4
-    in_keep = in_keep[0:np.int(np.sum(idx_negative_label) * under_sampling_rate)]
+    in_keep = in_keep[0:int(np.sum(idx_negative_label) * under_sampling_rate)]
 
     neg_samps_input = neg_samps_input[in_keep, :]
     neg_samps_label = neg_samps_label[in_keep]

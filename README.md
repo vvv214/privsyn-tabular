@@ -6,17 +6,16 @@ This repository implements the PrivSyn algorithm for Differentially Private Data
 The PrivSyn pipeline comprises three functional modules: data preprocessing, the PrivSyn main process, and synthesis evaluation.
 
 ### Project Structure
-*   `data/`: Stores raw datasets.
-*   `preprocess_common/`: Contains code for data preprocessing.
-*   `method/privsyn/`: Core PrivSyn algorithm (migrated from repo root).
+*   `data/`: Stores raw datasets (for local experiments).
+*   `preprocess_common/`: Data preprocessing and encoders.
+*   `method/privsyn/`: Core PrivSyn algorithm (authoritative).
 *   `method/AIM/`: AIM (Adaptive and Iterative Mechanism) implementation.
-*   `reconstruct_algo/`: Root-level access to reconstruction helpers and experiment scripts.
-*   `evaluator/`: Provides code for evaluating synthesis results.
-*   `eval_models/`: Stores settings for evaluation models.
-*   `util/`: Contains various helper functions.
+*   `reconstruct_algo/`: Helpers to reconstruct decoded DataFrames from encoded parts.
+*   `util/`: Shared helpers (e.g., privacy accounting `rho_cdp`).
 *   `web_app/`: FastAPI backend for the web application.
 *   `frontend/`: React.js frontend for the web application.
-*   `exp/`: Collects and saves experimental results.
+*   `test/`: Pytest tests; end-to-end tests live in `test/e2e/`.
+*   `exp/`: Experimental outputs (created at runtime).
 
 ## Setup
 
@@ -142,31 +141,24 @@ Memory usage at synthesize_data_start: RSS=XX.XX MB, VMS=YY.YY MB
 ```
 This helps in identifying memory-intensive operations.
 
-### 2. Running PrivSyn via CLI (for Research/Evaluation)
+### 2. Programmatic Usage (Adapters)
 
-The `main.py` script provides a command-line interface for running PrivSyn experiments.
+Both PrivSyn and AIM expose a lightweight adapter interface that returns decoded `pd.DataFrame` with original columns and types.
 
-#### Hyper-parameters
-*   `method`: Synthesis method to run (e.g., `privsyn`).
-*   `dataset`: Name of the dataset (e.g., `bank`).
-*   `device`: Device for running algorithms (e.g., `cuda:0` or `cpu`).
-*   `epsilon`: Differential privacy parameter (required).
-*   `--delta`: Differential privacy parameter (default: `1e-5`).
-*   `--num_preprocess`: Preprocessing method for numerical attributes (default: `uniform_kbins`).
-*   `--rare_threshold`: Threshold for categorical attribute preprocessing (default: `0.002`).
-*   `--sample_device`: Device for data sampling (defaults to `device`).
+Example (PrivSyn):
+```python
+from method.privsyn.adapter import prepare, run
 
-#### Example Usage
-First, ensure your datasets are placed in the `data/` folder (e.g., `data/bank`). Necessary datasets are usually provided.
-
-If evaluation models need tuning (e.g., for a new dataset), you can finetune them:
-```bash
-python evaluator/tune_eval_model.py bank mlp cv cuda:0
+# df is a pandas DataFrame; domain/info are dicts from the UI or your own
+bundle = prepare(df, user_domain_data, user_info_data, config={"device": "cpu"})
+synth_df = run(bundle, epsilon=1.0, delta=1e-5, n_sample=len(df))
 ```
 
-To run an overall evaluation with PrivSyn:
-```bash
-python main.py privsyn bank cuda:0 1.0
+Example (AIM; CPU-only):
+```python
+from method.AIM.adapter import prepare, run
+bundle = prepare(df, user_domain_data, user_info_data, config={"device": "cpu"})
+synth_df = run(bundle, epsilon=1.0, delta=1e-5, n_sample=len(df))
 ```
 
 ## Deployment
@@ -236,7 +228,7 @@ The repo exposes multiple methods via a unified adapter shape. Both PrivSyn and 
 
 ### Adapters
 - `method/privsyn/adapter.py`
-- `method/AIM/adapter.py`
+- `method/AIM/adapter.py` (CPU-only)
 
 Unified API:
 ```python
@@ -246,7 +238,15 @@ synth_df = run(bundle, epsilon=..., delta=..., n_sample=...)
 
 ### Frontend/Backend Integration
 - Frontend (Advanced Settings) includes a Method selector (`privsyn` or `aim`).
-- Backend dispatch is handled by `web_app/methods_dispatcher.py`.
+- Backend dispatch is centralized in `web_app/methods_dispatcher.py`.
+
+## Warnings Policy
+
+Tests silence noisy Deprecation/Future/Runtime warnings coming from heavy third‑party method folders (AIM, GEM, TabDDPM, DP_MERF, private_gsd, reconstruct_algo) via `pytest.ini` so core project warnings remain visible. To opt into strict mode for core code during local development or CI, run:
+
+```
+pytest -q -W error::DeprecationWarning -W error::FutureWarning -k "web_app or preprocess_common or method/privsyn"
+```
 
 ## PrivSyn Modules (Modularized API)
 

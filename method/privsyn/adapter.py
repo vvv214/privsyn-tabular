@@ -8,6 +8,7 @@ import pandas as pd
 from preprocess_common.load_data_common import data_preporcesser_common
 from util.rho_cdp import cdp_rho
 from method.privsyn.privsyn import privsyn_main, add_default_params
+from method.api import register_adapter
 
 
 logger = logging.getLogger(__name__)
@@ -108,3 +109,10 @@ def run(
     if len(expected_cols) == out.shape[1]:
         out.columns = expected_cols
     return out
+
+# Register this adapter into the unified registry at import time
+try:
+    register_adapter("privsyn", prepare, run)
+except Exception as _e:
+    # Avoid import hard-fail in environments that import modules in arbitrary order
+    pass

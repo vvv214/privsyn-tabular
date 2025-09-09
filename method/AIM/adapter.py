@@ -8,6 +8,7 @@ import pandas as pd
 from preprocess_common.load_data_common import data_preporcesser_common
 from util.rho_cdp import cdp_rho
 from method.AIM.aim import aim_main, add_default_params as aim_add_defaults
+from method.api import register_adapter
 
 
 logger = logging.getLogger(__name__)
@@ -171,3 +172,10 @@ def run(
             out[col] = pd.to_numeric(out[col], errors='coerce')
 
     return out
+
+# Register this adapter into the unified registry at import time
+try:
+    register_adapter("aim", prepare, run)
+except Exception as _e:
+    # Avoid import hard-fail in environments that import modules in arbitrary order
+    pass
