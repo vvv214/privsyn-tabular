@@ -13,12 +13,11 @@ function SynthesisForm({
   return (
     <section className="card">
       <div className="card-header">
-        <h3 className="mb-0">Synthesis Parameters</h3>
+        <h2 className="h5 mb-0">Synthesis Parameters</h2>
       </div>
       <div className="card-body">
         <form onSubmit={handleSubmit}>
-          {/* Basic Settings */}
-          <div className="row mb-3">
+          <div className="row mb-4">
             <div className="col-12">
               <label htmlFor="dataset_name" className="form-label">Dataset Name</label>
               <input
@@ -34,7 +33,7 @@ function SynthesisForm({
             </div>
           </div>
 
-          <div className="row mb-3">
+          <div className="row mb-4">
             <div className="col-md-4">
               <label htmlFor="epsilon" className="form-label">Epsilon (ε)</label>
               <input
@@ -75,10 +74,8 @@ function SynthesisForm({
             </div>
           </div>
 
-          {/* File Upload */}
-          <h5 className="mt-4 mb-3">Upload Dataset File</h5>
-          <div className="mb-3">
-            <label htmlFor="data_file" className="form-label">Select CSV or Zip File</label>
+          <div className="mb-4">
+            <label htmlFor="data_file" className="form-label">Upload Dataset</label>
             <div className="input-group">
               <input
                 type="file"
@@ -93,24 +90,23 @@ function SynthesisForm({
                 {loadingSample ? 'Loading...' : 'Load Sample'}
               </button>
             </div>
+            <div className="form-text">Upload a CSV or Zip file, or load the sample "adult" dataset.</div>
           </div>
 
-          {/* Advanced Settings Toggle */}
           <div className="d-grid">
             <button
               type="button"
-              className="btn btn-link text-secondary text-decoration-none p-0"
+              className="btn btn-link text-secondary text-decoration-none p-0 text-start"
               onClick={() => setShowAdvanced(!showAdvanced)}
             >
               {showAdvanced ? 'Hide' : 'Show'} Advanced Settings
             </button>
           </div>
 
-          {/* Advanced Settings Form */}
           {showAdvanced && (
-            <div className="mt-4 p-3 bg-light rounded">
-              <h5 className="mb-3">Advanced Parameters</h5>
-              <div className="row mb-3">
+            <div className="mt-3 p-4 bg-light rounded-3">
+              <h3 className="h6 mb-3">Advanced Parameters</h3>
+              <div className="row g-3">
                 <div className="col-md-6">
                   <label htmlFor="method" className="form-label">Method</label>
                   <select
@@ -121,7 +117,7 @@ function SynthesisForm({
                     onChange={handleChange}
                     required
                   >
-                    <option value="privsyn">privsyn</option>
+                    <option value="privsyn">PrivSyn</option>
                   </select>
                 </div>
                 <div className="col-md-6">
@@ -141,8 +137,6 @@ function SynthesisForm({
                     <option value="none">None</option>
                   </select>
                 </div>
-              </div>
-              <div className="row mb-3">
                 {formData.method === 'privsyn' && (
                   <div className="col-md-6">
                     <label htmlFor="update_iterations" className="form-label">Update Iterations</label>
@@ -158,10 +152,8 @@ function SynthesisForm({
                     <div className="form-text">More iterations improve quality but are slower.</div>
                   </div>
                 )}
-              </div>
-              <div className="row">
-                <div className="col-md-6">
-                  <div className="form-check">
+                <div className="col-md-12">
+                  <div className="form-check form-switch">
                     <input
                       className="form-check-input"
                       type="checkbox"
@@ -174,9 +166,7 @@ function SynthesisForm({
                       Append
                     </label>
                   </div>
-                </div>
-                <div className="col-md-6">
-                  <div className="form-check">
+                  <div className="form-check form-switch">
                     <input
                       className="form-check-input"
                       type="checkbox"
@@ -194,7 +184,9 @@ function SynthesisForm({
             </div>
           )}
 
-          <div className="d-grid mt-4">
+          <hr className="my-4" />
+
+          <div className="d-grid">
             <button type="submit" className="btn btn-primary btn-lg">
               Infer Metadata & Synthesize
             </button>

@@ -10,23 +10,23 @@ function ResultsDisplay({
   return (
     <section className="card mt-4">
       <div className="card-header">
-        <h3 className="mb-0">Synthesis Results: {formData.dataset_name}</h3>
+        <h2 className="h5 mb-0">Synthesis Results: {formData.dataset_name}</h2>
       </div>
       <div className="card-body">
-        <div className="text-center">
-          <a href={downloadUrl} download={`${formData.dataset_name}_synthesized.csv`} className="btn btn-success btn-lg mb-3">
+        <div className="text-center mb-4">
+          <a href={downloadUrl} download={`${formData.dataset_name}_synthesized.csv`} className="btn btn-success btn-lg">
             Download Synthesized Data
           </a>
         </div>
 
-        <h5 className="mt-4 mb-3 text-center">Synthesized Data Preview (First 10 Rows)</h5>
+        <h3 className="h6 text-center mb-3">Synthesized Data Preview (First 10 Rows)</h3>
         {synthesizedDataPreview.length > 0 ? (
           <div className="table-responsive">
             <table className="table table-striped table-bordered table-hover">
-              <thead>
+              <thead className="table-light">
                 <tr>
                   {synthesizedDataHeaders.map((header, index) => (
-                    <th key={index}>{header}</th>
+                    <th key={index} scope="col">{header}</th>
                   ))}
                 </tr>
               </thead>
@@ -46,9 +46,9 @@ function ResultsDisplay({
         )}
 
         {Object.keys(evaluationResults).length > 0 && (
-          <div className="mt-4">
+          <div className="mt-5">
             <hr />
-            <h5 className="mb-3 text-center">Evaluation Results</h5>
+            <h3 className="h6 text-center mb-3">Evaluation Results</h3>
             {Object.entries(evaluationResults).map(([method, result]) => (
               <div key={method} className="card mb-3">
                 <div className="card-header bg-light">
