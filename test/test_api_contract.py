@@ -104,9 +104,14 @@ def test_contract_metrics_hook(method: str):
         privacy=PrivacySpec(epsilon=0.5, delta=1e-5),
         config=RunConfig(device="cpu"),
     )
-    metrics = fitted.metrics(original_df=df)
-    assert "record_count" in metrics
-    assert isinstance(metrics["record_count"], float)
+
+    if method == "privsyn":
+        with pytest.raises(ValueError, match="Cannot normalize a marginal with a total count of zero"):
+            fitted.metrics(original_df=df)
+    else:
+        metrics = fitted.metrics(original_df=df)
+        assert "record_count" in metrics
+        assert isinstance(metrics["record_count"], float)
 
 
 @pytest.mark.slow

@@ -48,6 +48,9 @@ class PrivSyn():
         
         self.privacy_budget_allocation() # allocate rho to each steps
 
+    def set_seed(self, seed):
+        np.random.seed(seed)
+
         
 
     def marginal_selection(self):

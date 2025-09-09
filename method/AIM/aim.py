@@ -79,6 +79,9 @@ class AIM(Mechanism):
         max_model_size=80,
         max_iters=1000,
         structural_zeros={},
+        mappings={},
+        columns=[],
+        dtypes={},
     ):
         if rho is None:
             super(AIM, self).__init__(epsilon, delta, bounded)
@@ -90,6 +93,9 @@ class AIM(Mechanism):
         self.max_iters = max_iters
         self.max_model_size = max_model_size
         self.structural_zeros = structural_zeros
+        self.mappings = mappings
+        self.columns = columns
+        self.dtypes = dtypes
 
     def worst_approximated(self, candidates, answers, model, eps, sigma):
         errors = {}
@@ -205,16 +211,25 @@ class AIM(Mechanism):
     def syn_data(
             self, 
             num_synth_rows, 
-            path = None,
-            preprocesser = None
         ):
-        synth = self.model.synthetic_data(rows=num_synth_rows)
-        if path is None:
-            print('This is the raw data needed to be decoded')
-            return synth
-        else:
-            synth.save_data_npy(path, preprocesser)
-            return None
+        synth_dataset = self.model.synthetic_data(rows=num_synth_rows)
+
+        df = pd.DataFrame(synth_dataset.df.values, columns=synth_dataset.domain.attrs)
+
+        # Decode categorical columns
+        for col, uniques in self.mappings.items():
+            # Ensure indices are within bounds
+            max_idx = len(uniques) - 1
+            df[col] = df[col].apply(lambda i: uniques[i] if 0 <= i <= max_idx else None)
+
+        # Ensure dtypes and column order match original
+        for col in self.columns:
+            if col in df and df[col].dtype != self.dtypes[col]:
+                try:
+                    df[col] = df[col].astype(self.dtypes[col])
+                except (TypeError, ValueError):
+                    pass  # Keep as is if casting fails
+        return df[self.columns]
 
 def add_default_params(args):
     # Only set defaults if not already provided on args
@@ -233,11 +248,21 @@ def add_default_params(args):
 
 def aim_main(args, df, domain_spec, rho, **kwargs):
     args = add_default_params(args)
+
+    # Encode categorical columns and store mappings
+    mappings = {}
+    df_encoded = df.copy()
+    for col in df_encoded.columns:
+        if df_encoded[col].dtype == 'object' or isinstance(df_encoded[col].dtype, pd.CategoricalDtype):
+            codes, uniques = pd.factorize(df_encoded[col])
+            df_encoded[col] = codes
+            mappings[col] = uniques
+
     # domain_spec is a dict like {'col': {'size': N, 'type': 'T'}}; convert
     domain_attrs = list(domain_spec.keys())
     domain_shape = [v['size'] for v in domain_spec.values()]
     domain = Domain(domain_attrs, domain_shape)
-    data = Dataset(df, domain)
+    data = Dataset(df_encoded, domain)
 
     workload = list(itertools.combinations(data.domain.attrs, args.degree))
     workload = [cl for cl in workload if data.domain.size(cl) <= args.max_cells]
@@ -249,13 +274,19 @@ def aim_main(args, df, domain_spec, rho, **kwargs):
 
     workload = [(cl, 1.0) for cl in workload]
     mech = AIM(
-        rho = rho,
+        rho=rho,
         max_model_size=args.max_model_size,
         max_iters=args.max_iters,
+        mappings=mappings,
+        columns=df.columns.tolist(),
+        dtypes=df.dtypes.to_dict(),
     )
     mech.run(data, workload)
 
-    return {'aim_generator': mech}
+    bundle = {
+        'aim_generator': mech,
+    }
+    return bundle
 
 
 # def default_params():

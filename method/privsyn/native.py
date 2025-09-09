@@ -54,7 +54,7 @@ class FittedPrivSyn(FittedSynth):
 
     def sample(self, n: int, seed: Optional[int] = None) -> pd.DataFrame:
         if seed is not None:
-            np.random.seed(seed)
+            self._privsyn_generator.set_seed(seed)
 
         self._privsyn_generator.syn(n, self._preprocesser, parent_dir=None)
         out: pd.DataFrame = self._privsyn_generator.synthesized_df
