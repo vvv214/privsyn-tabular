@@ -141,24 +141,34 @@ Memory usage at synthesize_data_start: RSS=XX.XX MB, VMS=YY.YY MB
 ```
 This helps in identifying memory-intensive operations.
 
-### 2. Programmatic Usage (Adapters)
+### 2. Programmatic Usage (Native Synthesizers)
 
-Both PrivSyn and AIM expose a lightweight adapter interface that returns decoded `pd.DataFrame` with original columns and types.
+Both PrivSyn and AIM now expose a native `Synthesizer` interface, which is the recommended way to use them programmatically. The synthesizers can be accessed through the `SynthRegistry`.
 
-Example (PrivSyn):
+Example:
 ```python
-from method.privsyn.adapter import prepare, run
+from method.api import SynthRegistry, PrivacySpec, RunConfig
 
-# df is a pandas DataFrame; domain/info are dicts from the UI or your own
-bundle = prepare(df, user_domain_data, user_info_data, config={"device": "cpu"})
-synth_df = run(bundle, epsilon=1.0, delta=1e-5, n_sample=len(df))
-```
+# df is a pandas DataFrame
+# domain and info are dictionaries describing the data
+# (These are typically inferred by the UI, but can be constructed manually)
+domain = {'age': {'type': 'num', 'size': 256}, 'gender': {'type': 'cat', 'size': 3, 'categories': ['M', 'F', 'U']}}
+info = {'num_columns': ['age'], 'cat_columns': ['gender']}
 
-Example (AIM; CPU-only):
-```python
-from method.AIM.adapter import prepare, run
-bundle = prepare(df, user_domain_data, user_info_data, config={"device": "cpu"})
-synth_df = run(bundle, epsilon=1.0, delta=1e-5, n_sample=len(df))
+# 1. Get the synthesizer from the registry
+synth = SynthRegistry.get('privsyn') # or 'aim'
+
+# 2. Fit the synthesizer on the data
+fitted_synth = synth.fit(
+    df,
+    domain,
+    info,
+    privacy=PrivacySpec(epsilon=1.0, delta=1e-5),
+    config=RunConfig(device='cpu')
+)
+
+# 3. Sample synthetic data
+synthetic_df = fitted_synth.sample(n=len(df))
 ```
 
 ## Deployment
@@ -222,19 +232,11 @@ The backend can also be deployed to Google Cloud Run using Docker.
     gcloud run deploy privsyn-tabular --image gcr.io/<your-gcp-project-id>/privsyn-backend --platform managed --region us-east4 --memory 1Gi --allow-unauthenticated
     ```
 
-## Methods & Adapters
+## Methods
 
-The repo exposes multiple methods via a unified adapter shape. Both PrivSyn and AIM return synthesized data in the same (decoded) tabular format (original column names and value types). If you prefer to reconstruct from encoded representations, use `reconstruct_algo/reconstruct.py`.
+The repo exposes multiple methods via a unified `Synthesizer` interface. Both PrivSyn and AIM return synthesized data in the same (decoded) tabular format (original column names and value types). If you prefer to reconstruct from encoded representations, use `reconstruct_algo/reconstruct.py`.
 
-### Adapters
-- `method/privsyn/adapter.py`
-- `method/AIM/adapter.py` (CPU-only)
-
-Unified API:
-```python
-bundle = prepare(df, user_domain_data, user_info_data, config)
-synth_df = run(bundle, epsilon=..., delta=..., n_sample=...)
-```
+The legacy adapter interface is now deprecated and will be removed in a future version.
 
 ### Frontend/Backend Integration
 - Frontend (Advanced Settings) includes a Method selector (`privsyn` or `aim`).
