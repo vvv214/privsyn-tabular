@@ -231,12 +231,15 @@ def add_default_params(args):
     return args
 
 
-def aim_main(args, df, domain, rho, **kwargs):
+def aim_main(args, df, domain_spec, rho, **kwargs):
     args = add_default_params(args)
-    domain = Domain(domain.keys(), domain.values())
+    # domain_spec is a dict like {'col': {'size': N, 'type': 'T'}}; convert
+    domain_attrs = list(domain_spec.keys())
+    domain_shape = [v['size'] for v in domain_spec.values()]
+    domain = Domain(domain_attrs, domain_shape)
     data = Dataset(df, domain)
 
-    workload = list(itertools.combinations(data.domain, args.degree))
+    workload = list(itertools.combinations(data.domain.attrs, args.degree))
     workload = [cl for cl in workload if data.domain.size(cl) <= args.max_cells]
     if args.num_marginals is not None:
         workload = [
