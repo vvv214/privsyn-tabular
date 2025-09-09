@@ -70,6 +70,9 @@ def prepare(
     Returns a bundle consumable by run().
     """
     config = config or {}
+    if config.get("random_state") is not None:
+        np.random.seed(config["random_state"])
+
     args = AdapterArgs(
         dataset=config.get("dataset", "adapter_dataset"),
         method="aim",
@@ -105,6 +108,7 @@ def prepare(
         "preprocesser": preprocesser,
         "user_info": user_info_data,
         "user_domain": user_domain_data,
+        "original_dtypes": df.dtypes.to_dict(),
     }
     return bundle
 
@@ -116,6 +120,8 @@ def run(
     seed: Optional[int] = None,
     n_sample: Optional[int] = None,
 ) -> pd.DataFrame:
+    if seed is not None:
+        np.random.seed(seed)
     """Run AIM on CPU and return a decoded DataFrame.
 
     - Uses CDP rho computed from epsilon/delta if provided; otherwise from bundle args.
@@ -166,10 +172,25 @@ def run(
         out = synth_encoded_df.copy()
         out.columns = num_cols + cat_cols
 
-    # Enforce numeric dtypes on numeric columns to avoid string/object leaks
-    for col in num_cols:
-        if col in out.columns:
-            out[col] = pd.to_numeric(out[col], errors='coerce')
+    # Enforce dtypes to match original
+    original_dtypes = bundle.get("original_dtypes")
+    if original_dtypes is not None:
+        for col, dtype in original_dtypes.items():
+            if col in out.columns:
+                try:
+                    if pd.api.types.is_integer_dtype(dtype):
+                        # Coerce to numeric, fill NaNs, then cast to integer
+                        out[col] = pd.to_numeric(out[col], errors='coerce').fillna(0).astype(dtype)
+                    else:
+                        out[col] = out[col].astype(dtype)
+                except (ValueError, TypeError):
+                    # Fallback for columns that can't be cast
+                    out[col] = pd.to_numeric(out[col], errors='coerce')
+    else:
+        # Fallback for older bundles without dtypes
+        for col in num_cols:
+            if col in out.columns:
+                out[col] = pd.to_numeric(out[col], errors='coerce')
 
     return out
 

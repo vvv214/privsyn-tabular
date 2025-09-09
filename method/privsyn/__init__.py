@@ -1,2 +1,1 @@
-"""PrivSyn package (moved from repo root)."""
-
+from . import adapter
