@@ -332,7 +332,9 @@ class FactoredInference:
             estimates = np.array([])
             for Q, y, noise, proj in measurements:
                 o = np.ones(Q.shape[1])
-                v = lsmr(Q.T, o, atol=0, btol=0)[0]
+                # Q may be a custom EkteloMatrix, requiring conversion to sparse
+                Q_T_sparse = aslinearoperator(Q.T).sparse_matrix() if hasattr(Q.T, "sparse_matrix") else Q.T
+                v = lsmr(Q_T_sparse, o, atol=0, btol=0)[0]
                 if np.allclose(Q.T.dot(v), o):
                     variances = np.append(variances, noise ** 2 * np.dot(v, v))
                     estimates = np.append(estimates, np.dot(v, y))

@@ -34,8 +34,12 @@ class FittedSynth:
     def info(self) -> Dict[str, Any]:  # pragma: no cover - interface
         return {}
 
-    def metrics(self, original_df: Optional[pd.DataFrame] = None) -> Dict[str, float]:  # pragma: no cover - interface
-        return {}
+    def metrics(self, original_df: Optional[pd.DataFrame] = None) -> Dict[str, float]:
+        # By default, adapters do not provide metrics.
+        # This hook is for native synthesizers to override.
+        return {
+            "record_count": self.sample(n=original_df.shape[0] if original_df is not None else 10).shape[0],
+        }
 
 
 class Synthesizer:
@@ -78,23 +82,42 @@ class _AdapterFitted(FittedSynth):
         self._extra_info: Dict[str, Any] = {}
 
     def sample(self, n: int, seed: Optional[int] = None) -> pd.DataFrame:
+        # If a seed is passed to sample, it overrides the fit-time seed.
+        # Otherwise, we fall back to the fit-time seed.
+        run_seed = seed
+        if run_seed is None and self._config and self._config.random_state is not None:
+            run_seed = self._config.random_state
+
         df = self._run_fn(
             self._bundle,
             epsilon=self._privacy.epsilon,
             delta=self._privacy.delta,
-            seed=seed,
+            seed=run_seed,
             n_sample=n,
         )
         return df
 
     @property
     def info(self) -> Dict[str, Any]:
-        return {
+        info_dict = {
             "method": self._method,
             "epsilon": self._privacy.epsilon,
             "delta": self._privacy.delta,
             **self._extra_info,
         }
+        if self._config and self._config.device:
+            info_dict["device"] = self._config.device
+        return info_dict
+
+    def metrics(self, original_df: Optional[pd.DataFrame] = None) -> Dict[str, float]:
+        """Metrics hook for adapter-based synthesizers.
+
+        As a default, we provide a simple record count metric. Native synthesizers
+        can and should provide more meaningful metrics.
+        """
+        n_synth = original_df.shape[0] if original_df is not None else 10
+        synth_df = self.sample(n=n_synth)
+        return {"record_count": float(synth_df.shape[0])}
 
 
 class _AdapterSynth(Synthesizer):
@@ -127,6 +150,8 @@ class _AdapterSynth(Synthesizer):
         if config is not None:
             raw_cfg = {
                 "device": config.device,
+                "random_state": config.random_state,
+                "n_threads": config.n_threads,
                 **(config.extra or {}),
             }
         # Adapter prepare accepts df, domain/info dicts and config dict
