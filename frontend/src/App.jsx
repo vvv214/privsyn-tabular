@@ -1,21 +1,24 @@
-import { useState, useEffect } from 'react';
-import 'bootstrap/dist/css/bootstrap.min.css'; // Import Bootstrap CSS
-import axios from 'axios'; // Import axios
-import Papa from 'papaparse'; // Import PapaParse for CSV parsing
-import MetadataConfirmation from './MetadataConfirmation'; // Import the new component
+import { useState } from 'react';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import axios from 'axios';
+import Papa from 'papaparse';
+import MetadataConfirmation from './components/MetadataConfirmation';
+import SynthesisForm from './components/SynthesisForm';
+import ResultsDisplay from './components/ResultsDisplay';
+import './index.css';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL;
 
 function App() {
   const [currentPage, setCurrentPage] = useState('form'); // 'form', 'confirm_metadata', or 'result'
   const [formData, setFormData] = useState({
-    method: 'privsyn', // Default value
+    method: 'privsyn',
     dataset_name: '',
-    epsilon: 1.0, // Default value
-    delta: 1e-5, // Default value
-    num_preprocess: 'uniform_kbins', // Default value
-    rare_threshold: 0.002, // Default value
-    n_sample: 200, // Conservative default for faster runs
+    epsilon: 1.0,
+    delta: 1e-5,
+    num_preprocess: 'uniform_kbins',
+    rare_threshold: 0.002,
+    n_sample: 200,
     consist_iterations: 3,
     append: true,
     sep_syn: false,
@@ -23,52 +26,35 @@ function App() {
     update_iterations: 2,
   });
 
-  const [dataFile, setDataFile] = useState(null); // Single file input for CSV
+  const [dataFile, setDataFile] = useState(null);
   const [loadingSample, setLoadingSample] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
-
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [downloadUrl, setDownloadUrl] = useState('');
-  const [synthesizedDataPreview, setSynthesizedDataPreview] = useState([]); // For displaying data preview
-  const [synthesizedDataHeaders, setSynthesizedDataHeaders] = useState([]); // For displaying data preview headers
-  const [evaluationResults, setEvaluationResults] = useState({}); // To store evaluation results
-
-  // New state for metadata confirmation flow
+  const [synthesizedDataPreview, setSynthesizedDataPreview] = useState([]);
+  const [synthesizedDataHeaders, setSynthesizedDataHeaders] = useState([]);
+  const [evaluationResults, setEvaluationResults] = useState({});
   const [inferredUniqueId, setInferredUniqueId] = useState(null);
   const [inferredDomainData, setInferredDomainData] = useState(null);
   const [inferredInfoData, setInferredInfoData] = useState(null);
 
-  
-
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData((prevData) => ({
-      ...prevData,
-      [name]: type === 'checkbox' ? checked : value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
   const handleFileChange = (e) => {
-    setDataFile(e.target.files[0]); // Set the single data file
+    setDataFile(e.target.files[0]);
   };
 
-  const handleLoadSample = async () => {
-    // Select built-in sample and prepare state; do NOT auto-infer
+  const handleLoadSample = () => {
     setLoadingSample(true);
-    const nextForm = { ...formData, dataset_name: 'adult' };
-    setFormData(nextForm);
+    setFormData((prev) => ({ ...prev, dataset_name: 'adult' }));
     setDataFile(null);
+    setMessage('Sample dataset "adult" loaded. Adjust parameters and click Synthesize.');
     setError('');
-    setDownloadUrl('');
-    setSynthesizedDataPreview([]);
-    setSynthesizedDataHeaders([]);
-    setEvaluationResults({});
-    setMessage('Sample selected. Review settings, then click Infer.');
     setLoadingSample(false);
   };
-
-  
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -77,101 +63,74 @@ function App() {
     setDownloadUrl('');
     setSynthesizedDataPreview([]);
     setSynthesizedDataHeaders([]);
-    setEvaluationResults({}); // Clear previous evaluation results
+    setEvaluationResults({});
 
     const data = new FormData();
-    for (const key in formData) {
-      data.append(key, formData[key]);
-    }
-    data.append('target_column', 'y_attr'); // Hardcode or infer default
+    Object.entries(formData).forEach(([key, value]) => data.append(key, value));
+    data.append('target_column', 'y_attr');
+    if (dataFile) data.append('data_file', dataFile);
 
-    if (dataFile) {
-      data.append('data_file', dataFile); // Append the single data file
-    } else if (formData.dataset_name !== 'adult' && formData.dataset_name !== 'debug_dataset') {
-      setError('Please upload a data file, or choose the built-in sample.');
+    if (!dataFile && !formData.dataset_name.includes('adult')) {
+      setError('Please upload a data file or load the sample dataset.');
       setMessage('');
       return;
     }
 
     try {
-            const response = await axios.post(`${API_URL}/synthesize`, data, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+      const response = await axios.post(`${API_URL}/synthesize`, data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
-
-      // Store inferred metadata and switch to confirmation page
       setInferredUniqueId(response.data.unique_id);
       setInferredDomainData(response.data.domain_data);
       setInferredInfoData(response.data.info_data);
       setCurrentPage('confirm_metadata');
-      setMessage(''); // Clear message after successful inference
-
+      setMessage('');
     } catch (err) {
-      console.error('Synthesis error:', err);
       const detail = err.response?.data?.detail;
-      setError(typeof detail === 'string' ? detail : detail ? JSON.stringify(detail) : 'Failed to synthesize data. Check console for details.');
+      setError(typeof detail === 'string' ? detail : JSON.stringify(detail) || 'Failed to synthesize data.');
       setMessage('');
     }
   };
 
-  const handleConfirmMetadata = async (uniqueId, confirmedDomainData, confirmedInfoData) => {
+  const handleConfirmMetadata = async (uniqueId, domainData, infoData) => {
     setMessage('Synthesizing data...');
     setError('');
 
     const data = new FormData();
     data.append('unique_id', uniqueId);
-    data.append('confirmed_domain_data', JSON.stringify(confirmedDomainData));
-    data.append('confirmed_info_data', JSON.stringify(confirmedInfoData));
-
-    // Append all synthesis parameters from formData
-    for (const key in formData) {
-      data.append(key, formData[key]);
-    }
+    data.append('confirmed_domain_data', JSON.stringify(domainData));
+    data.append('confirmed_info_data', JSON.stringify(infoData));
+    Object.entries(formData).forEach(([key, value]) => data.append(key, value));
 
     try {
       const response = await axios.post(`${API_URL}/confirm_synthesis`, data, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
+      const { message: msg, dataset_name: name } = response.data;
+      setMessage(msg);
+      setDownloadUrl(`${API_URL}/download_synthesized_data/${name}`);
 
-      const { message: responseMessage, dataset_name: returnedDatasetName } = response.data;
-      setMessage(responseMessage);
-      setDownloadUrl(`${API_URL}/download_synthesized_data/${returnedDatasetName}`);
-
-      // Fetch the synthesized CSV for preview
-      const csvResponse = await axios.get(`${API_URL}/download_synthesized_data/${returnedDatasetName}`, { responseType: 'blob' });
-
+      const csvResponse = await axios.get(`${API_URL}/download_synthesized_data/${name}`, { responseType: 'blob' });
       Papa.parse(csvResponse.data, {
         header: true,
         skipEmptyLines: true,
         complete: (results) => {
           setSynthesizedDataHeaders(results.meta.fields || []);
-          setSynthesizedDataPreview(results.data.slice(0, 10)); // Show first 10 rows
-          setCurrentPage('result'); // Switch to result page
-          handleEvaluate(['query', 'tvd']); // Automatically trigger evaluation
+          setSynthesizedDataPreview(results.data.slice(0, 10));
+          setCurrentPage('result');
+          handleEvaluate(['query', 'tvd']);
         },
-        error: (err) => {
-          console.error("CSV parsing error:", err);
-          setError("Failed to parse synthesized data for preview.");
-          setMessage('');
-        }
+        error: () => setError('Failed to parse synthesized data for preview.'),
       });
-
     } catch (err) {
-      console.error('Confirmation and Synthesis error:', err);
       const detail = err.response?.data?.detail;
-      setError(typeof detail === 'string' ? detail : detail ? JSON.stringify(detail) : 'Failed to confirm metadata and synthesize data. Check console for details.');
+      setError(typeof detail === 'string' ? detail : JSON.stringify(detail) || 'Failed to confirm metadata and synthesize data.');
       setMessage('');
     }
   };
 
   const handleCancelConfirmation = () => {
-    setInferredUniqueId(null);
-    setInferredDomainData(null);
-    setInferredInfoData(null);
-    setCurrentPage('form'); // Go back to the initial form
+    setCurrentPage('form');
     setMessage('');
     setError('');
   };
@@ -179,232 +138,40 @@ function App() {
   const handleEvaluate = async (methods) => {
     setMessage('Evaluating data fidelity...');
     setError('');
-    setEvaluationResults({}); // Clear previous results
+    setEvaluationResults({});
 
     const data = new FormData();
     data.append('dataset_name', formData.dataset_name);
-    data.append('evaluation_methods', methods.map(method => `eval_${method}`).join(','));
+    data.append('evaluation_methods', methods.map((m) => `eval_${m}`).join(','));
 
     try {
       const response = await axios.post(`${API_URL}/evaluate`, data, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
       setMessage(response.data.message);
       setEvaluationResults(response.data.results);
     } catch (err) {
-      console.error('Evaluation error:', err);
       const detail = err.response?.data?.detail;
-      setError(typeof detail === 'string' ? detail : detail ? JSON.stringify(detail) : 'Failed to run evaluations. Check console for details.');
+      setError(typeof detail === 'string' ? detail : JSON.stringify(detail) || 'Failed to run evaluations.');
       setMessage('');
     }
   };
 
-  return (
-    <main className="app-container w-100 px-3">
-      <div className="mx-auto" style={{ maxWidth: 800, width: '100%' }}>
-          
-        <h1 className="mb-4 text-center">PrivSyn: A Tool for Differentially Private Data Synthesis</h1>
-
-        {message && <div className="alert alert-info mt-4">{message}</div>}
-        {error && <div className="alert alert-danger mt-4">Error: {error}</div>}
-
-        {currentPage === 'form' && (
-          <section className="card shadow-sm">
-            <div className="card-header bg-primary text-white">
-              <h3 className="mb-0">Synthesis Parameters</h3>
-            </div>
-            <div className="card-body">
-              <form onSubmit={handleSubmit}>
-                {/* Basic Settings */}
-                <div className="row mb-3">
-                  <div className="col-md-12">
-                    <label htmlFor="dataset_name" className="form-label">Dataset Name</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      id="dataset_name"
-                      name="dataset_name"
-                      value={formData.dataset_name}
-                      onChange={handleChange}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="row mb-3">
-                  <div className="col-md-4">
-                    <label htmlFor="epsilon" className="form-label">Epsilon</label>
-                    <input
-                      type="number"
-                      step="any"
-                      className="form-control"
-                      id="epsilon"
-                      name="epsilon"
-                      value={formData.epsilon}
-                      onChange={handleChange}
-                      required
-                    />
-                  </div>
-                  <div className="col-md-4">
-                    <label htmlFor="delta" className="form-label">Delta</label>
-                    <input
-                      type="number"
-                      step="any"
-                      className="form-control"
-                      id="delta"
-                      name="delta"
-                      value={formData.delta}
-                      onChange={handleChange}
-                      required
-                    />
-                  </div>
-                  <div className="col-md-4">
-                    <label htmlFor="n_sample" className="form-label">Number of Samples</label>
-                    <input
-                      type="number"
-                      className="form-control"
-                      id="n_sample"
-                      name="n_sample"
-                      value={formData.n_sample}
-                      onChange={handleChange}
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* File Upload */}
-                <h4 className="mt-4 mb-3">Upload Dataset File (CSV or Zip)</h4>
-                <div className="mb-3">
-                  <label htmlFor="data_file" className="form-label">Select CSV/Zip File</label>
-                  <input
-                    type="file"
-                    className="form-control"
-                    id="data_file"
-                    name="data_file"
-                    onChange={handleFileChange}
-                    accept=".csv,.zip"
-                    required={formData.dataset_name !== 'adult' && formData.dataset_name !== 'debug_dataset'}
-                  />
-                  <div className="mt-2">
-                    <button type="button" className="btn btn-outline-secondary btn-sm" onClick={handleLoadSample} disabled={loadingSample}>
-                      {loadingSample ? 'Loading sample...' : 'Load Sample (Adult)'}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Advanced Settings Toggle */}
-                <div className="d-grid gap-2">
-                  <button
-                    type="button"
-                    className="btn btn-secondary mt-3"
-                    onClick={() => setShowAdvanced(!showAdvanced)}
-                  >
-                    {showAdvanced ? 'Hide' : 'Show'} Advanced Settings
-                  </button>
-                </div>
-
-                {/* Advanced Settings Form */}
-                {showAdvanced && (
-                  <div className="mt-4">
-                    <hr />
-                    <h4 className="mb-3">Advanced Synthesis Parameters</h4>
-                    <div className="row mb-3">
-                      <div className="col-md-6">
-                        <label htmlFor="method" className="form-label">Method</label>
-                        <select
-                          className="form-select"
-                          id="method"
-                          name="method"
-                          value={formData.method}
-                          onChange={handleChange}
-                          required
-                        >
-                          <option value="privsyn">privsyn</option>
-                        </select>
-                      </div>
-                      <div className="col-md-6">
-                        <label htmlFor="num_preprocess" className="form-label">Numerical Preprocess</label>
-                        <select
-                          className="form-select"
-                          id="num_preprocess"
-                          name="num_preprocess"
-                          value={formData.num_preprocess}
-                          onChange={handleChange}
-                          required
-                        >
-                          <option value="uniform_kbins">uniform_kbins</option>
-                          <option value="exp_kbins">exp_kbins</option>
-                          <option value="privtree">privtree</option>
-                          <option value="dawa">dawa</option>
-                          <option value="none">none</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div className="row mb-3">
-                    </div>
-                    <div className="row mb-3">
-                      {formData.method === 'privsyn' && (
-                        <div className="col-md-6">
-                          <label htmlFor="update_iterations" className="form-label">Update Iterations</label>
-                          <input
-                            type="number"
-                            className="form-control"
-                            id="update_iterations"
-                            name="update_iterations"
-                            value={formData.update_iterations}
-                            onChange={handleChange}
-                            required
-                          />
-                          <div className="form-text">The more iterations the better the results, but the slower.</div>
-                        </div>
-                      )}
-                    </div>
-                    <div className="row mb-3">
-                      <div className="col-md-6">
-                        <div className="form-check">
-                          <input
-                            className="form-check-input"
-                            type="checkbox"
-                            id="append"
-                            name="append"
-                            checked={formData.append}
-                            onChange={handleChange}
-                          />
-                          <label className="form-check-label" htmlFor="append">
-                            Append
-                          </label>
-                        </div>
-                      </div>
-                      <div className="col-md-6">
-                        <div className="form-check">
-                          <input
-                            className="form-check-input"
-                            type="checkbox"
-                            id="sep_syn"
-                            name="sep_syn"
-                            checked={formData.sep_syn}
-                            onChange={handleChange}
-                          />
-                          <label className="form-check-label" htmlFor="sep_syn">
-                            Separate Synthesis
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="d-grid gap-2">
-                  <button type="submit" className="btn btn-primary mt-3">Infer Metadata & Synthesize</button>
-                </div>
-              </form>
-            </div>
-          </section>
-        )}
-
-        {currentPage === 'confirm_metadata' && inferredDomainData && inferredInfoData && (
+  const renderPage = () => {
+    switch (currentPage) {
+      case 'form':
+        return (
+          <SynthesisForm
+            formData={formData}
+            handleChange={handleChange}
+            handleFileChange={handleFileChange}
+            handleSubmit={handleSubmit}
+            handleLoadSample={handleLoadSample}
+            loadingSample={loadingSample}
+          />
+        );
+      case 'confirm_metadata':
+        return (
           <MetadataConfirmation
             uniqueId={inferredUniqueId}
             inferredDomainData={inferredDomainData}
@@ -413,67 +180,34 @@ function App() {
             onConfirm={handleConfirmMetadata}
             onCancel={handleCancelConfirmation}
           />
-        )}
+        );
+      case 'result':
+        return (
+          <ResultsDisplay
+            formData={formData}
+            downloadUrl={downloadUrl}
+            synthesizedDataPreview={synthesizedDataPreview}
+            synthesizedDataHeaders={synthesizedDataHeaders}
+            evaluationResults={evaluationResults}
+          />
+        );
+      default:
+        return null;
+    }
+  };
 
-        {currentPage === 'result' && (
-          <section className="card shadow-sm mt-5">
-            <div className="card-header bg-success text-white text-center">
-              <h3 className="mb-0">Synthesis Results for {formData.dataset_name}</h3>
-            </div>
-            <div className="card-body">
-              <div className="text-center">
-                  <a href={downloadUrl} download={`${formData.dataset_name}_synthesized.csv`} className="btn btn-primary mb-3">
-                    Download Synthesized Data
-                  </a>
-              </div>
+  return (
+    <main className="app-container container-fluid">
+      <div className="mx-auto" style={{ maxWidth: 960 }}>
+        <header className="text-center mb-4">
+          <h1 className="display-5">PrivSyn</h1>
+          <p className="lead text-muted">A Tool for Differentially Private Data Synthesis</p>
+        </header>
 
-              <h4 className="mt-4 mb-3 text-center">Synthesized Data Preview (First 10 Rows)</h4>
-              {synthesizedDataPreview.length > 0 ? (
-                <div className="text-center">
-                  <div className="table-responsive">
-                    <table className="table table-striped table-bordered table-hover d-inline-block">
-                    <thead>
-                      <tr>
-                        {synthesizedDataHeaders.map((header, index) => (
-                          <th key={index}>{header}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {synthesizedDataPreview.map((row, rowIndex) => (
-                        <tr key={rowIndex}>
-                          {synthesizedDataHeaders.map((header, colIndex) => (
-                            <td key={colIndex}>{row[header]}</td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  </div>
+        {message && <div className="alert alert-info">{message}</div>}
+        {error && <div className="alert alert-danger">Error: {error}</div>}
 
-                </div>
-              ) : (
-                <p className="text-muted text-center">No data preview available.</p>
-              )}
-
-              <hr className="my-4" />
-
-              {Object.keys(evaluationResults).length > 0 && (
-                <div className="mt-4">
-                  <h5 className="mb-3 text-center">Evaluation Results:</h5>
-                  {Object.entries(evaluationResults).map(([method, result]) => (
-                    <div key={method} className="card mb-3">
-                      <div className="card-header bg-light">{method.replace('eval_', '').replace('_', '').toUpperCase()}</div>
-                      <div className="card-body">
-                        <pre className="card-text small text-start">{JSON.stringify(result, null, 2)}</pre>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </section>
-        )}
+        {renderPage()}
       </div>
     </main>
   );
