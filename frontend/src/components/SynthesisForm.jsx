@@ -1,5 +1,3 @@
-import { useState } from 'react';
-
 function SynthesisForm({
   formData,
   handleChange,
@@ -8,8 +6,6 @@ function SynthesisForm({
   handleLoadSample,
   loadingSample,
 }) {
-  const [showAdvanced, setShowAdvanced] = useState(false);
-
   return (
     <section className="card">
       <div className="card-header">
@@ -93,97 +89,85 @@ function SynthesisForm({
             <div className="form-text">Upload a CSV or Zip file, or load the sample "adult" dataset.</div>
           </div>
 
-          <div className="d-grid">
-            <button
-              type="button"
-              className="btn btn-link text-secondary text-decoration-none p-0 text-start"
-              onClick={() => setShowAdvanced(!showAdvanced)}
-            >
-              {showAdvanced ? 'Hide' : 'Show'} Advanced Settings
-            </button>
-          </div>
-
-          {showAdvanced && (
-            <div className="mt-3 p-4 bg-light rounded-3">
-              <h3 className="h6 mb-3">Advanced Parameters</h3>
-              <div className="row g-3">
+          <div className="mt-3 p-4 bg-light rounded-3">
+            <h3 className="h6 mb-3">Advanced Parameters</h3>
+            <div className="row g-3">
+              <div className="col-md-6">
+                <label htmlFor="method" className="form-label">Method</label>
+                <select
+                  className="form-select"
+                  id="method"
+                  name="method"
+                  value={formData.method}
+                  onChange={handleChange}
+                  required
+                >
+                  <option value="privsyn">PrivSyn</option>
+                  <option value="aim">AIM</option>
+                </select>
+              </div>
+              <div className="col-md-6">
+                <label htmlFor="num_preprocess" className="form-label">Numerical Preprocessing</label>
+                <select
+                  className="form-select"
+                  id="num_preprocess"
+                  name="num_preprocess"
+                  value={formData.num_preprocess}
+                  onChange={handleChange}
+                  required
+                >
+                  <option value="uniform_kbins">Uniform K-Bins</option>
+                  <option value="exp_kbins">Exponential K-Bins</option>
+                  <option value="privtree">PrivTree</option>
+                  <option value="dawa">DAWA</option>
+                  <option value="none">None</option>
+                </select>
+              </div>
+              {formData.method === 'privsyn' && (
                 <div className="col-md-6">
-                  <label htmlFor="method" className="form-label">Method</label>
-                  <select
-                    className="form-select"
-                    id="method"
-                    name="method"
-                    value={formData.method}
+                  <label htmlFor="update_iterations" className="form-label">Update Iterations</label>
+                  <input
+                    type="number"
+                    className="form-control"
+                    id="update_iterations"
+                    name="update_iterations"
+                    value={formData.update_iterations}
                     onChange={handleChange}
                     required
-                  >
-                    <option value="privsyn">PrivSyn</option>
-                    <option value="aim">AIM</option>
-                  </select>
+                  />
+                  <div className="form-text">More iterations improve quality but are slower.</div>
                 </div>
-                <div className="col-md-6">
-                  <label htmlFor="num_preprocess" className="form-label">Numerical Preprocessing</label>
-                  <select
-                    className="form-select"
-                    id="num_preprocess"
-                    name="num_preprocess"
-                    value={formData.num_preprocess}
+              )}
+              <div className="col-md-12">
+                <div className="form-check form-switch">
+                  <input
+                    className="form-check-input"
+                    type="checkbox"
+                    id="append"
+                    name="append"
+                    checked={formData.append}
                     onChange={handleChange}
-                    required
-                  >
-                    <option value="uniform_kbins">Uniform K-Bins</option>
-                    <option value="exp_kbins">Exponential K-Bins</option>
-                    <option value="privtree">PrivTree</option>
-                    <option value="dawa">DAWA</option>
-                    <option value="none">None</option>
-                  </select>
+                  />
+                  <label className="form-check-label" htmlFor="append">
+                    Append
+                  </label>
                 </div>
-                {formData.method === 'privsyn' && (
-                  <div className="col-md-6">
-                    <label htmlFor="update_iterations" className="form-label">Update Iterations</label>
-                    <input
-                      type="number"
-                      className="form-control"
-                      id="update_iterations"
-                      name="update_iterations"
-                      value={formData.update_iterations}
-                      onChange={handleChange}
-                      required
-                    />
-                    <div className="form-text">More iterations improve quality but are slower.</div>
-                  </div>
-                )}
-                <div className="col-md-12">
-                  <div className="form-check form-switch">
-                    <input
-                      className="form-check-input"
-                      type="checkbox"
-                      id="append"
-                      name="append"
-                      checked={formData.append}
-                      onChange={handleChange}
-                    />
-                    <label className="form-check-label" htmlFor="append">
-                      Append
-                    </label>
-                  </div>
-                  <div className="form-check form-switch">
-                    <input
-                      className="form-check-input"
-                      type="checkbox"
-                      id="sep_syn"
-                      name="sep_syn"
-                      checked={formData.sep_syn}
-                      onChange={handleChange}
-                    />
-                    <label className="form-check-label" htmlFor="sep_syn">
-                      Separate Synthesis
-                    </label>
-                  </div>
+                <div className="form-check form-switch">
+                  <input
+                    className="form-check-input"
+                    type="checkbox"
+                    id="sep_syn"
+                    name="sep_syn"
+                    checked={formData.sep_syn}
+                    onChange={handleChange}
+                  />
+                  <label className="form-check-label" htmlFor="sep_syn">
+                    Separate Synthesis
+                  </label>
                 </div>
               </div>
             </div>
-          )}
+          </div>
 
           <hr className="my-4" />
 

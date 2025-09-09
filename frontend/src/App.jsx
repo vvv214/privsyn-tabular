@@ -1,16 +1,18 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import axios from 'axios';
 import Papa from 'papaparse';
 import MetadataConfirmation from './components/MetadataConfirmation';
 import SynthesisForm from './components/SynthesisForm';
 import ResultsDisplay from './components/ResultsDisplay';
+import LoadingOverlay from './components/LoadingOverlay';
 import './index.css';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL;
 
 function App() {
   const [currentPage, setCurrentPage] = useState('form'); // 'form', 'confirm_metadata', or 'result'
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     method: 'privsyn',
     dataset_name: '',
@@ -117,8 +119,15 @@ function App() {
     setLoadingSample(false);
   };
 
+  useEffect(() => {
+    if (loading) {
+      window.scrollTo(0, 0);
+    }
+  }, [loading]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
     setMessage('Inferring metadata...');
     setError('');
     setDownloadUrl('');
@@ -134,6 +143,7 @@ function App() {
     if (!dataFile && !formData.dataset_name.includes('adult')) {
       setError('Please upload a data file or load the sample dataset.');
       setMessage('');
+      setLoading(false);
       return;
     }
 
@@ -150,10 +160,13 @@ function App() {
       const detail = err.response?.data?.detail;
       setError(typeof detail === 'string' ? detail : JSON.stringify(detail) || 'Failed to synthesize data.');
       setMessage('');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleConfirmMetadata = async (uniqueId, domainData, infoData) => {
+    setLoading(true);
     setMessage('Synthesizing data...');
     setError('');
 
@@ -187,6 +200,8 @@ function App() {
       const detail = err.response?.data?.detail;
       setError(typeof detail === 'string' ? detail : JSON.stringify(detail) || 'Failed to confirm metadata and synthesize data.');
       setMessage('');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -265,7 +280,8 @@ function App() {
           <p className="lead text-muted">A Tool for Differentially Private Data Synthesis</p>
         </header>
 
-        {message && <div className="alert alert-info">{message}</div>}
+        {loading && <LoadingOverlay message={message} />}
+        {message && !loading && <div className="alert alert-info">{message}</div>}
         {error && <div className="alert alert-danger">Error: {error}</div>}
 
         {renderPage()}
