@@ -26,7 +26,7 @@ def test_new_ui(page: Page):
         print(f"An error occurred: {e}")
 
 with sync_playwright() as p:
-    browser = p.chromium.launch()
+    browser = p.chromium.launch(headless=True)
     page = browser.new_page()
     test_new_ui(page)
     browser.close()
