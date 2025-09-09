@@ -1,76 +1,82 @@
+:root {
+  --primary-color: #007bff;
+  --secondary-color: #6c757d;
+  --success-color: #28a745;
+  --danger-color: #dc3545;
+  --light-color: #f8f9fa;
+  --dark-color: #343a40;
+  --background-color: #f4f7f6;
+  --text-color: #212529;
+  --card-background-color: #ffffff;
+  --card-border-color: #e0e0e0;
+  --card-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+}
 
 html, body, #root {
   height: 100%;
   margin: 0;
   padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background-color: var(--background-color);
+  color: var(--text-color);
 }
 
 body {
   display: flex;
-  justify-content: center;   
-  align-items: center;       
+  justify-content: center;
+  align-items: flex-start; /* Align to the top */
   min-width: 320px;
   min-height: 100vh;
-  background-color: #f8f9fa; 
+  padding-top: 2rem; /* Add some space at the top */
 }
 
 .app-container {
-  background-color: #ffffff;
-  padding: 30px;
-  border-radius: 8px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  background-color: transparent;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
-.metadata-confirmation-container {
-  padding: 20px;
-  border: 1px solid #e0e0e0;
+.card {
+  background-color: var(--card-background-color);
+  border: 1px solid var(--card-border-color);
   border-radius: 8px;
-  background-color: #fdfdfd;
-  margin-top: 20px;
+  box-shadow: var(--card-shadow);
+  margin-bottom: 1.5rem;
 }
 
-.form-group {
-  margin-bottom: 15px;
+.card-header {
+  font-weight: 500;
+  background-color: var(--light-color);
+  border-bottom: 1px solid var(--card-border-color);
 }
-.form-group label {
-  font-weight: bold;
-  margin-bottom: 5px;
-  display: block;
+
+.table-responsive {
+  margin-top: 1.5rem;
 }
-.form-group input[type="text"],
-.form-group input[type="number"],
-.form-group select {
-  width: 100%;
-  padding: 8px;
-  border: 1px solid #ced4da;
+
+.table th, .table td {
+  vertical-align: middle;
+}
+
+.btn-primary {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.btn-secondary {
+  background-color: var(--secondary-color);
+  border-color: var(--secondary-color);
+}
+
+.alert {
+  margin-top: 1.5rem;
+}
+
+pre {
+  white-space: pre-wrap;
+  word-break: break-all;
+  background-color: var(--light-color);
+  padding: 1rem;
   border-radius: 4px;
-  box-sizing: border-box;
 }
-
-.form-actions {
-  margin-top: 20px;
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
-.form-actions button {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 16px;
-}
-.form-actions button[type="submit"] {
-  background-color: #007bff;
-  color: white;
-}
-.form-actions button[type="button"] {
-  background-color: #6c757d;
-  color: white;
-}
-
-.alert { margin-top: 20px; }
-.table-responsive { margin-top: 20px; }
-.table th, .table td { vertical-align: middle; }
-.card-header { font-weight: bold; background-color: #e9ecef; }
-.card-body pre { white-space: pre-wrap; word-break: break-all; }
