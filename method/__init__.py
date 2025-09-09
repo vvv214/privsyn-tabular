@@ -1,0 +1,2 @@
+"""Methods namespace package."""
+

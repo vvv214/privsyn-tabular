@@ -6,7 +6,7 @@ import pickle
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
 
-from privsyn.lib_dataset.data_store import DataStore
+from method.privsyn.lib_dataset.data_store import DataStore
 
 
 def test_datastore_save_and_load_marginal(tmp_path):

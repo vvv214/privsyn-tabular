@@ -43,6 +43,20 @@ This guide explains how to run the Python tests for the PrivSyn project using `p
         ./.venv/bin/pytest test/
         ```
 
+4.  End-to-End (Playwright) tests (optional):
+
+    These tests launch the backend (Uvicorn) and the frontend (Vite) and drive the UI via Playwright. They are skipped by default. To enable:
+
+    ```bash
+    pip install -r requirements.txt
+    python -m playwright install
+    cd frontend && npm install && cd ..
+    E2E=1 pytest -q -k e2e
+    ```
+
+    - `test/e2e/test_frontend_backend_e2e.py`: full upload → synthesize → download flow
+    - `test/e2e/test_ui_smoke.py`: lightweight UI smoke (checks title/text and saves a screenshot to `test/e2e/artifacts/ui_smoke.png`)
+
 ## Interpreting Test Results
 
 *   **`PASSED`**: Indicates that the test function completed successfully without any unhandled exceptions and all assertions passed.

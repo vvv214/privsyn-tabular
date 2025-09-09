@@ -118,6 +118,7 @@ function SynthesisForm({
                     required
                   >
                     <option value="privsyn">PrivSyn</option>
+                    <option value="aim">AIM</option>
                   </select>
                 </div>
                 <div className="col-md-6">

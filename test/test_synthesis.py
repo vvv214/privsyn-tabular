@@ -16,7 +16,7 @@ sys.path.insert(0, project_root)
 # Import modules from web_app and preprocess_common
 from web_app.data_inference import infer_data_metadata
 from preprocess_common.load_data_common import data_preporcesser_common
-from privsyn.privsyn import privsyn_main
+from method.privsyn.privsyn import privsyn_main
 from util.rho_cdp import cdp_rho
 
 # Dummy Args class to mimic the behavior of args object

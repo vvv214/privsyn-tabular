@@ -1,0 +1,261 @@
+#####################################################################
+#                                                                   #
+#                The main procedure class of dpsyn,                 #
+#               which implements algorithm 3 in paper               #
+#                                                                   #
+#####################################################################
+
+import sys
+
+import numpy as np
+import pandas as pd
+import logging
+import math
+import copy
+
+from method.privsyn.parameter_parser import parameter_parser
+from method.privsyn.lib_dataset.dataset import Dataset
+from method.privsyn.lib_marginal.marg import Marginal
+from method.privsyn.lib_marginal.marg_determine import marginal_selection, marginal_combine
+from method.privsyn.lib_dataset.data_store import DataStore
+from method.privsyn.lib_dataset.domain import Domain
+from method.privsyn.lib_synthesize.GUM import GUM_Mechanism
+
+class PrivSyn():
+    def __init__(self, args, df, domain, rho):
+        '''
+        Initialize the PrivSyn class, requiring:
+            1. args: a dict of hyper-parameters
+            2. df: a dataframe
+            3. domain: a dict of attributes domain
+            4. rho: total rho for PrivSyn. 
+               The rho of each modules will be allocated based on the total rho, which is achieved by `privacy_budget_allocation`.
+        '''
+
+        self.logger = logging.getLogger('PrivSyn')        
+        self.args = args
+        self.total_rho = rho
+        
+        self.dataset_name = args['dataset']
+        self.data_store = DataStore(self.args)
+        self.load_data_from_df(df, domain)
+
+        self.num_records = self.original_dataset.df.shape[0]
+        self.num_attributes = self.original_dataset.df.shape[1]
+
+        self.one_way_marg_dict  = {} # save one-way marginals
+        self.combined_marg_dict  = {} # save multi-way marginals
+        
+        self.privacy_budget_allocation() # allocate rho to each steps
+
+        
+
+    def marginal_selection(self):
+        self.logger.info("Starting marginal selection.")
+        self.sel_marg_name = self.select_and_combine_marginals(self.original_dataset)
+        self.one_way_marg_dict = self.construct_margs(mode = 'one_way') 
+        self.combined_marg_dict = self.construct_margs(mode = 'combined')
+        self.logger.info("Finished marginal selection.")
+
+    
+
+    def syn(self, n_sample, preprocesser, parent_dir, progress_report=None, **kwargs):
+        self.logger.info(f"Starting synthesis for {n_sample} samples.")
+        self.model = GUM_Mechanism(self.args, self.original_dataset, self.combined_marg_dict, self.one_way_marg_dict, progress_report=progress_report)
+        self.logger.info("GUM_Mechanism initialized. Running GUM model.")
+        self.synthesized_df = self.model.run(n_sample)
+        try:
+            min_val = self.synthesized_df.min().min()
+            max_val = self.synthesized_df.max().max()
+            self.logger.debug(f"Synthesized DF range: min={min_val}, max={max_val}")
+        except Exception:
+            # Be resilient if df is empty or non-numeric
+            self.logger.debug("Synthesized DF stats unavailable")
+        self.logger.info("GUM model run complete. Starting postprocessing.")
+        if progress_report:
+            progress_report({"status": "running", "stage": "postprocess", "overall_step": 4, "overall_total": 5, "message": "Postprocessing results"})
+        self.postprocessing(preprocesser, parent_dir)
+        self.logger.info("Finished synthesis.")
+
+
+
+
+    ########################################### helper function ###########################################
+    
+    def load_data_from_df(self, df, domain):
+        self.logger.info("loading dataset %s" % (self.dataset_name,))
+        domain = Domain(df.columns, domain)
+        self.original_dataset = Dataset(df, domain)
+        
+
+    def privacy_budget_allocation(self):
+        self.indif_rho = self.total_rho * 0.1
+        self.one_way_marginal_rho = self.total_rho * 0.1
+        self.combined_marginal_rho = self.total_rho * 0.8
+    
+
+    def select_and_combine_marginals(self, dataset):
+        '''
+        implements algorithm 1(marginal selection) and algorithm 2(marginal combine) in paper
+        '''
+        if self.args['is_cal_marginals']:
+            self.logger.info("selecting marginals")
+    
+            select_args = copy.deepcopy(self.args)
+            select_args['indif_rho'] = self.indif_rho
+            select_args['combined_marginal_rho'] = self.combined_marginal_rho
+            select_args['threshold'] = 5000
+            
+            marginals = marginal_selection(dataset, select_args) #alg1
+
+            if select_args['is_combine']:
+                marginals = marginal_combine(dataset, select_args, marginals) #alg2
+
+            self.data_store.save_marginal(marginals)
+        else:
+            marginals = self.data_store.load_marginal()
+        
+        return marginals
+
+    
+    def construct_marg(self, dataset, marginal):
+        marg = Marginal(dataset.domain.project(marginal), dataset.domain)
+        marg.count_records(dataset.df.values)
+        
+        return marg
+    
+    def anonymize_marg(self, marg, rho=0.0):
+        sigma = math.sqrt(self.args['marg_add_sensitivity'] ** 2 / (2.0 * rho))
+        noise = np.random.normal(scale=sigma, size=marg.count.shape[0]) # Use actual size of marg.count
+        marg.count = marg.count.astype(float) # Convert to float before adding noise
+        marg.count += noise
+
+        return marg
+
+    def construct_margs(self, mode):
+        if mode == 'one_way':
+            self.logger.info("constructing one-way marginals")
+
+            one_way_marg_dict = {}
+            rho = self.one_way_marginal_rho / len(self.original_dataset.domain.attrs)
+            self.gauss_sigma_4_one_way = math.sqrt(self.args['marg_add_sensitivity'] ** 2 / (2.0 * rho))
+
+            for attr in self.original_dataset.domain.attrs:
+                marg = self.construct_marg(self.original_dataset, (attr,))
+                self.anonymize_marg(marg, rho)
+                one_way_marg_dict[(attr,)] = marg
+            
+            self.logger.info("constructed one-way marginals")
+            return one_way_marg_dict
+        
+        elif mode == 'combined':
+            self.logger.info("constructing combined marginals")
+
+            divider = 0.0
+            combined_marg_dict = {}
+            rho = self.combined_marginal_rho
+
+            for i, marginal in enumerate(self.sel_marg_name):
+                self.logger.debug('%s th marginal' % (i,))
+                combined_marg_dict[marginal] = self.construct_marg(self.original_dataset, marginal)
+
+            for key, marg in combined_marg_dict.items():
+                divider += math.pow(marg.num_key, 2.0 / 3.0)
+            for key, marg in combined_marg_dict.items():
+                marg.rho = rho * math.pow(marg.num_key, 2.0 / 3.0) / divider
+                self.anonymize_marg(marg, rho=marg.rho)
+            
+            self.logger.info("constructed combined marginals")
+            return combined_marg_dict
+            
+
+    def postprocessing(self, preprocesser, save_path = None):
+        
+        x_num_rev, x_cat_rev = preprocesser.reverse_data(self.synthesized_df, save_path)
+        
+        if x_num_rev is not None and x_cat_rev is not None:
+            self.synthesized_df = pd.DataFrame(np.concatenate((x_num_rev, x_cat_rev), axis=1))
+        elif x_num_rev is not None:
+            self.synthesized_df = pd.DataFrame(x_num_rev)
+        elif x_cat_rev is not None:
+            self.synthesized_df = pd.DataFrame(x_cat_rev)
+
+
+
+    ######################################## Static Method ##############################################
+    # This function extract the process of two-way marginal selection, which can be used for other synthesize methods
+
+    @staticmethod
+    def two_way_marginal_selection(df, domain, rho_indif, rho_measure):
+        args = {}
+        args['indif_rho'] = rho_indif
+        args['combined_marginal_rho'] = rho_measure # don't used in this phase, just as a penalty term
+        args['dataset_name'] = 'temp_data'
+        args['is_cal_depend'] = True
+        args['marg_sel_threshold'] = 20000
+
+        # Build shape list aligned to the dataframe column order
+        domain_list = [int(domain[col]) for col in df.columns]
+        domain = Domain(df.columns, domain_list)
+        dataset = Dataset(df, domain)
+        
+        marginals = marginal_selection(dataset, args)
+
+        return marginals
+
+
+
+def config_logger():
+    # create logger
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(levelname)s:%(asctime)s: - %(name)s - : %(message)s')
+    
+    # create console handler
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
+
+
+def add_default_params(args):
+    defaults = {
+        'is_cal_marginals': True,
+        'is_cal_depend': True,
+        'is_combine': True,
+        'marg_add_sensitivity': 1.0,
+        'marg_sel_threshold': 20000,
+        'non_negativity': "N3",
+        'consist_iterations': 501,
+        'initialize_method': "singleton",
+        'update_method': "S5",
+        'append': True,
+        'sep_syn': False,
+        'update_rate_method': "U4",
+        'update_rate_initial': 1.0,
+        'update_iterations': 50
+    }
+    
+    args.dataset_name = args.dataset
+
+    for key, value in defaults.items():
+        if not hasattr(args, key):
+            setattr(args, key, value)
+
+    return args
+
+def privsyn_main(args, df, domain, rho, **kwargs):
+    config_logger()
+
+    args = vars(add_default_params(args))
+    privsyn_generator = PrivSyn(args, df, domain, rho) 
+    privsyn_generator.marginal_selection()
+
+    return {"privsyn_generator": privsyn_generator}
+
+
+
+if __name__ == "__main__":
+    args = parameter_parser()
+    
+    privsyn_main(args)

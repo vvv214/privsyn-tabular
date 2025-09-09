@@ -6,10 +6,10 @@ import os, sys
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
 
-from privsyn.lib_dataset.domain import Domain
-from privsyn.lib_dataset.dataset import Dataset
-from privsyn.lib_marginal.marg import Marginal
-from privsyn.lib_marginal.consistent import Consistenter
+from method.privsyn.lib_dataset.domain import Domain
+from method.privsyn.lib_dataset.dataset import Dataset
+from method.privsyn.lib_marginal.marg import Marginal
+from method.privsyn.lib_marginal.consistent import Consistenter
 
 
 def test_marginal_count_records_simple():

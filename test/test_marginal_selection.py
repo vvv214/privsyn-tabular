@@ -6,7 +6,7 @@ import os, sys
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
 
-from privsyn.privsyn import PrivSyn
+from method.privsyn.privsyn import PrivSyn
 
 
 def test_two_way_marginal_selection_returns_pairs():

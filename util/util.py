@@ -35,7 +35,7 @@ def prepare_eval_config(args, parent_dir):
 
 def algo_method(args):
     if args.method == 'privsyn':
-        from privsyn.privsyn import privsyn_main
+        from method.privsyn.privsyn import privsyn_main
         algo = privsyn_main 
     else:
         raise 'Invalid Method Name'

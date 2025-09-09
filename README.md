@@ -8,7 +8,9 @@ The PrivSyn pipeline comprises three functional modules: data preprocessing, the
 ### Project Structure
 *   `data/`: Stores raw datasets.
 *   `preprocess_common/`: Contains code for data preprocessing.
-*   `privsyn/`: Implements the core PrivSyn algorithm.
+*   `method/privsyn/`: Core PrivSyn algorithm (migrated from repo root).
+*   `method/AIM/`: AIM (Adaptive and Iterative Mechanism) implementation.
+*   `reconstruct_algo/`: Root-level access to reconstruction helpers and experiment scripts.
 *   `evaluator/`: Provides code for evaluating synthesis results.
 *   `eval_models/`: Stores settings for evaluation models.
 *   `util/`: Contains various helper functions.
@@ -48,7 +50,6 @@ To get started with PrivSyn, follow these steps:
 4.  **Install Python dependencies:**
     ```bash
     pip install -r requirements.txt
-    pip install psutil  # For memory monitoring
     ```
 5.  **Run the FastAPI backend server:**
     Ensure your virtual environment is activated.
@@ -119,7 +120,7 @@ Convenience script:
 ./scripts/run_e2e.sh
 ```
 
-This will create a `.venv`, install Python deps, install Playwright browsers, install frontend deps, and run the E2E.
+This will create a `.venv`, install Python deps, install Playwright browsers, install frontend deps, and run the E2E. E2E tests are located under `test/e2e/`.
 
 ### 1.2 Quick Benchmarks
 
@@ -229,12 +230,30 @@ The backend can also be deployed to Google Cloud Run using Docker.
     gcloud run deploy privsyn-tabular --image gcr.io/<your-gcp-project-id>/privsyn-backend --platform managed --region us-east4 --memory 1Gi --allow-unauthenticated
     ```
 
+## Methods & Adapters
+
+The repo exposes multiple methods via a unified adapter shape. Both PrivSyn and AIM return synthesized data in the same (decoded) tabular format (original column names and value types). If you prefer to reconstruct from encoded representations, use `reconstruct_algo/reconstruct.py`.
+
+### Adapters
+- `method/privsyn/adapter.py`
+- `method/AIM/adapter.py`
+
+Unified API:
+```python
+bundle = prepare(df, user_domain_data, user_info_data, config)
+synth_df = run(bundle, epsilon=..., delta=..., n_sample=...)
+```
+
+### Frontend/Backend Integration
+- Frontend (Advanced Settings) includes a Method selector (`privsyn` or `aim`).
+- Backend dispatch is handled by `web_app/methods_dispatcher.py`.
+
 ## PrivSyn Modules (Modularized API)
 
 Beyond an overall implementation of PrivSyn, this repository also offers the modularized API of PrivSyn, which are `InDif selection` and `GUM`.
 
 ### InDif selection
-This is a method for marginal selection by measuring InDif. We implement it as a static method in `PrivSyn` class, called `two_way_marginal_selection` (see `privsyn/privsyn.py`). This method will return a list of 2-way marginal tuple, as the final selection. The hypermeters of this method can be summarized as
+This is a method for marginal selection by measuring InDif. We implement it as a static method in `PrivSyn` class, called `two_way_marginal_selection` (see `method/privsyn/privsyn.py`). This method will return a list of 2-way marginal tuple, as the final selection. The hypermeters of this method can be summarized as
 * `df`: a dataframe of dataset
 * `domain`: a dictionary of attributes domain
 * `rho_indif`: privacy budget for measuring InDif
@@ -246,14 +265,14 @@ selected_marginals = PrivSyn.two_way_marginal_selection(df, domain, rho_indif, r
 ```
 
 ### GUM
-We construct a class of GUM synthesis method called `GUM_Mechanisms` (see `privsyn/lib_synthesize/GUM.py`). Here is a instruction of using this closed-form synthesis module.
+We construct a class of GUM synthesis method called `GUM_Mechanisms` (see `method/privsyn/lib_synthesize/GUM.py`). Here is a instruction of using this closed-form synthesis module.
 * `Initialization`. The initialization of GUM requires an input of hyperparameters dictionary (same as PrivSyn), dataset (Dataset class), a dictionary of 1-way marginals (used for data initialization, can be an empty dictionary), a dictionary of 2-way marginals. The dictionary of marginals should be in the form of:
 
     ```
     {'(attr1, attr2)': Marginal1, '(attr3, attr4)': Marginal2, ...}
     ```
 
-    Here `Marginal1` and `Marginal2` should be in Marginal class (see `privsyn/lib_marginal/marg.py`), and measured by method `count_records`. You can initialize a GUM class like
+    Here `Marginal1` and `Marginal2` should be in Marginal class (see `method/privsyn/lib_marginal/marg.py`), and measured by method `count_records`. You can initialize a GUM class like
 
     ```python
     model = GUM_Mechanism(args, df, dict1, dict2)
