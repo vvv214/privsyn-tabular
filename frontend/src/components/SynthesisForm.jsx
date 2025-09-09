@@ -138,34 +138,6 @@ function SynthesisForm({
                   <div className="form-text">More iterations improve quality but are slower.</div>
                 </div>
               )}
-              <div className="col-md-12">
-                <div className="form-check form-switch">
-                  <input
-                    className="form-check-input"
-                    type="checkbox"
-                    id="append"
-                    name="append"
-                    checked={formData.append}
-                    onChange={handleChange}
-                  />
-                  <label className="form-check-label" htmlFor="append">
-                    Append
-                  </label>
-                </div>
-                <div className="form-check form-switch">
-                  <input
-                    className="form-check-input"
-                    type="checkbox"
-                    id="sep_syn"
-                    name="sep_syn"
-                    checked={formData.sep_syn}
-                    onChange={handleChange}
-                  />
-                  <label className="form-check-label" htmlFor="sep_syn">
-                    Separate Synthesis
-                  </label>
-                </div>
-              </div>
             </div>
           </div>
 
