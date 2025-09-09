@@ -61,7 +61,10 @@ class Marginal:
         self.count[indices] = count_num
 
     def calculate_normalize_count(self):
-        self.normalize_count = self.count / np.sum(self.count)
+        total = np.sum(self.count)
+        if total == 0:
+            raise ValueError("Cannot normalize a marginal with a total count of zero. The input data for this marginal may be empty.")
+        self.normalize_count = self.count / total
         return self.normalize_count
 
     def calculate_count_matrix(self):

@@ -52,6 +52,7 @@ def calculate_indif(logger, dataset, dataset_name, rho):
         indif_df DataFrame with columns [first_attr, second_attr, num_cells, error]
     """
     df = dataset.df
+    n_records = dataset.df.shape[0]
     dataset_domain = dataset.domain
     original_domain = dataset.domain
 
@@ -78,13 +79,18 @@ def calculate_indif(logger, dataset, dataset_name, rho):
             independent_pair_distribution = np.outer(first_histogram, second_histogram)
             normalize_pair_marg_count = pair_marg.count_matrix / np.sum(pair_marg.count_matrix)
             error = np.sum(np.absolute(normalize_pair_marg_count - independent_pair_distribution))
+            
+            error_counts = error * n_records
 
             num_cells = original_domain.config[first_attr] * original_domain.config[second_attr]
-            indif_df.loc[indif_index] = [first_attr, second_attr, num_cells, error]
+            indif_df.loc[indif_index] = [first_attr, second_attr, num_cells, error_counts]
             indif_index += 1
 
-    if rho != 0.0:
-        indif_df.error += np.random.normal(scale=np.sqrt(8 * indif_df.shape[0] / rho), size=indif_df.shape[0])
+    if rho > 0.0:
+        noise = np.random.normal(scale=np.sqrt(8 * indif_df.shape[0] / rho), size=indif_df.shape[0])
+        indif_df.error += noise
+    elif rho < 0.0:
+        raise ValueError("Privacy budget rho cannot be negative.")
 
     try:
         pickle.dump(indif_df, open(config.DEPENDENCY_PATH + dataset_name, "wb"))

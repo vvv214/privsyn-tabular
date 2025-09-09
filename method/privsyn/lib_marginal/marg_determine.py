@@ -33,7 +33,7 @@ def marginal_selection(dataset, select_args):
     marginals = []
     selected_attrs = set()
 
-    error = indif_df["error"].to_numpy() * dataset.df.shape[0]
+    error = indif_df["error"].to_numpy()
     num_cells = indif_df["num_cells"].to_numpy().astype(np.float64)
     overall_error = np.sum(error)
     selected = set()
