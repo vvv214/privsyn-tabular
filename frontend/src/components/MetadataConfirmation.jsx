@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-const MetadataConfirmation = ({ uniqueId, inferredDomainData, inferredInfoData, synthesisParams, onConfirm, onCancel }) => {
+const MetadataConfirmation = ({ uniqueId, inferredDomainData, inferredInfoData, onConfirm, onCancel }) => {
     const [domainData, setDomainData] = useState(inferredDomainData);
     const [infoData, setInfoData] = useState(inferredInfoData);
 
