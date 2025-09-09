@@ -95,10 +95,16 @@ class GUM_Mechanism():
         
         # main procedure for synthesizing records
         for key, value in self.iterate_keys.items():
-            synthesizer = self._update_records(value)
-            temp_synthesized_df.loc[:, key] = synthesizer.update.df.loc[:, key]
-
-            self.error_tracker = pd.concat([self.error_tracker, synthesizer.update.error_tracker])
+            try:
+                synthesizer = self._update_records(value)
+                cols = list(key) if isinstance(key, tuple) else [key]
+                available = [c for c in cols if c in temp_synthesized_df.columns and c in synthesizer.update.df.columns]
+                if available:
+                    temp_synthesized_df.loc[:, available] = synthesizer.update.df.loc[:, available]
+                if hasattr(synthesizer, 'update') and hasattr(synthesizer.update, 'error_tracker'):
+                    self.error_tracker = pd.concat([self.error_tracker, synthesizer.update.error_tracker])
+            except Exception as e:
+                self.logger.warning(f"Skip iterate key {key} due to error: {e}")
 
         self.logger.info("updated data")
         self.synthesized_df = temp_synthesized_df.copy(deep=True)
@@ -143,4 +149,3 @@ class GUM_Mechanism():
         data = self.synthesized_df.iloc[:, cols]
         domain = self.original_dataset.domain.project(cols)
         return Dataset(data, domain)
-

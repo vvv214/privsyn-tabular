@@ -43,61 +43,55 @@ def transform_records_distinct_value(logger, df, dataset_domain):
     return df
 
 
-def calculate_indif(logger, df, dataset_domain, original_domain, dataset_name, rho):
-    logger.info("calculating pair indif")
+def calculate_indif(logger, dataset, dataset_name, rho):
+    """Calculate InDif on a Dataset object and persist to dependency path.
 
-    indif_df = pd.DataFrame(
-        columns=["first_attr", "second_attr", "num_cells", "error"])
+    Args:
+        dataset: object with fields .df (DataFrame) and .domain (Domain)
+    Returns:
+        indif_df DataFrame with columns [first_attr, second_attr, num_cells, error]
+    """
+    df = dataset.df
+    dataset_domain = dataset.domain
+    original_domain = dataset.domain
+
+    logger.info("calculating pair indif")
+    indif_df = pd.DataFrame(columns=["first_attr", "second_attr", "num_cells", "error"])
     indif_index = 0
 
     for first_index, first_attr in enumerate(dataset_domain.attrs[:-1]):
-        first_marg = Marginal(dataset_domain.project(
-            first_attr), dataset_domain) # first one-way marginal
+        first_marg = Marginal(dataset_domain.project(first_attr), dataset_domain)
         first_marg.count_records(df.values)
         first_histogram = first_marg.calculate_normalize_count()
 
         for second_attr in dataset_domain.attrs[first_index + 1:]:
-            logger.info("calculating [%s, %s]" %
-                             (first_attr, second_attr))
+            logger.info("calculating [%s, %s]" % (first_attr, second_attr))
 
-            second_marg = Marginal(dataset_domain.project(
-                second_attr), dataset_domain) # second one-way marginal
+            second_marg = Marginal(dataset_domain.project(second_attr), dataset_domain)
             second_marg.count_records(df.values)
             second_histogram = second_marg.calculate_normalize_count()
 
-            # calculate real 2-way marginal
-            pair_marg = Marginal(dataset_domain.project(
-                (first_attr, second_attr)), dataset_domain)
+            pair_marg = Marginal(dataset_domain.project((first_attr, second_attr)), dataset_domain)
             pair_marg.count_records(df.values)
             pair_marg.calculate_count_matrix()
 
-            # calculate 2-way marginal assuming independent
-            independent_pair_distribution = np.outer(
-                first_histogram, second_histogram)
+            independent_pair_distribution = np.outer(first_histogram, second_histogram)
+            normalize_pair_marg_count = pair_marg.count_matrix / np.sum(pair_marg.count_matrix)
+            error = np.sum(np.absolute(normalize_pair_marg_count - independent_pair_distribution))
 
-            # calculate the errors
-            normalize_pair_marg_count = pair_marg.count_matrix / \
-                np.sum(pair_marg.count_matrix)
-            error = np.sum(np.absolute(
-                normalize_pair_marg_count - independent_pair_distribution))
-
-            num_cells = original_domain.config[first_attr] * \
-                original_domain.config[second_attr]
-            indif_df.loc[indif_index] = [
-                first_attr, second_attr, num_cells, error]
-
+            num_cells = original_domain.config[first_attr] * original_domain.config[second_attr]
+            indif_df.loc[indif_index] = [first_attr, second_attr, num_cells, error]
             indif_index += 1
 
-    # add noise
     if rho != 0.0:
-        indif_df.error += np.random.normal(
-            scale=np.sqrt(8 * indif_df.shape[0]/rho), size=indif_df.shape[0])
+        indif_df.error += np.random.normal(scale=np.sqrt(8 * indif_df.shape[0] / rho), size=indif_df.shape[0])
 
-    # publish indif
-    pickle.dump(indif_df, open(
-        config.DEPENDENCY_PATH + dataset_name, "wb"))
-
+    try:
+        pickle.dump(indif_df, open(config.DEPENDENCY_PATH + dataset_name, "wb"))
+    except Exception:
+        pass
     logger.info("calculated pair indif")
+    return indif_df
 
 def handle_isolated_attrs(dataset_domain, selected_attrs, indif_df, marginals, method="isolate", sort=False):
     # find attrs that does not appear in any of the pairwise marginals

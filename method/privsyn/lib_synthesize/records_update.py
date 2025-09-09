@@ -34,7 +34,8 @@ class RecordUpdate:
                     else:
                         self.df[attr] = np.random.randint(0, self.domain.config[attr], size=self.num_records)
 
-        self.error_tracker = pd.DataFrame(index=iterate_keys)
+        # lazy initialize error tracker without preset index to avoid index-type mismatches
+        self.error_tracker = pd.DataFrame()
 
 
     def generate_singleton_records(self, singleton):
@@ -154,7 +155,11 @@ class RecordUpdate:
         self.synthesize_marginal = synth
         err = float(np.abs(actual - synth).sum())
         col = f"{iteration}-before"
-        self.error_tracker.loc[marg_key, col] = err
+        key_tuple = tuple(marg_key) if not isinstance(marg_key, tuple) else marg_key
+        key_label = "::".join(map(str, key_tuple))
+        if key_label not in self.error_tracker.index:
+            self.error_tracker.loc[key_label, :] = np.nan
+        self.error_tracker.loc[key_label, col] = err
 
     def complete_partial_ratio(self, marg, ratio):
         need_map = {}
@@ -186,5 +191,8 @@ class RecordUpdate:
         actual = self.actual_marginal
         err = float(np.abs(actual - synth).sum())
         col = f"{iteration}-after"
-        self.error_tracker.loc[marg_key, col] = err
-
+        key_tuple = tuple(marg_key) if not isinstance(marg_key, tuple) else marg_key
+        key_label = "::".join(map(str, key_tuple))
+        if key_label not in self.error_tracker.index:
+            self.error_tracker.loc[key_label, :] = np.nan
+        self.error_tracker.loc[key_label, col] = err

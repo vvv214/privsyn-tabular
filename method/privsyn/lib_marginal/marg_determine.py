@@ -64,10 +64,14 @@ def marginal_selection(dataset, select_args):
                 selected_index = j
                 error_new = error_temp
 
+        # If no improvement found, stop selection
+        if selected_index is None:
+            break
         gap = overall_error - error_new
         overall_error = error_new
         selected.add(selected_index)
-        unselected.remove(selected_index)
+        if selected_index in unselected:
+            unselected.remove(selected_index)
 
         first_attr, second_attr = indif_df.loc[selected_index, "first_attr"], indif_df.loc[
             selected_index, "second_attr"]

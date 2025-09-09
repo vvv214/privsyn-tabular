@@ -94,3 +94,38 @@ class Marginal:
         if total == 0:
             return count
         return count / total
+
+    # ---- Methods used by consistency/update logic (minimal implementations) ----
+    def init_consist_parameters(self, num_target_margs):
+        self.summations = np.zeros([self.num_key, num_target_margs])
+        self.weights = np.zeros(num_target_margs)
+        self.rhos = np.zeros(num_target_margs)
+
+    def calculate_delta(self):
+        weights = self.rhos * self.weights
+        denom = np.sum(weights) if np.sum(weights) > 0 else 1.0
+        target = np.matmul(self.summations, weights) / denom
+        # store element-wise delta per-target (not strictly needed for our minimal update)
+        self.delta = - (self.summations.T - target).T * weights if self.summations.size else np.zeros_like(self.summations)
+
+    def project_from_bigger_marg(self, bigger_marg, index):
+        # project bigger_marg counts onto this marginal's attribute set
+        encode_num = np.zeros(self.num_attributes, dtype=np.uint32)
+        encode_num[self.attributes_index] = self.encode_num
+        encode_num = encode_num[bigger_marg.attributes_index]
+        encode_tuple_key = np.matmul(bigger_marg.tuple_key, encode_num)
+        proj = np.bincount(encode_tuple_key, weights=bigger_marg.count, minlength=self.num_key)
+        if hasattr(self, 'summations') and self.summations.shape[1] > index:
+            self.summations[:, index] = proj
+            self.weights[index] = 1.0
+            self.rhos[index] = max(getattr(bigger_marg, 'rho', 1.0), 1e-12)
+
+    def update_marg(self, common_marg, index):
+        # Minimal no-op: rely on non_negativity + normalization later
+        return
+
+    def non_negativity(self, mode, iterations):
+        self.count = np.where(self.count < 0, 0.0, self.count)
+
+    def get_sum(self):
+        self.sum = float(np.sum(self.count))

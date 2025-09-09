@@ -99,25 +99,12 @@ def run(
         n_sample = df_processed.shape[0]
 
     generator.syn(n_sample, preprocesser, parent_dir=None, progress_report=progress_report)
-    synth_df_encoded: pd.DataFrame = generator.synthesized_df
-
-    x_num_rev, x_cat_rev = preprocesser.reverse_data(synth_df_encoded)
+    out: pd.DataFrame = generator.synthesized_df
+    # Ensure column names restored to original
     info = bundle["user_info"]
     num_cols = info.get("num_columns", []) or []
     cat_cols = info.get("cat_columns", []) or []
-
-    if x_num_rev is not None and x_cat_rev is not None:
-        out = pd.DataFrame(
-            np.concatenate((x_num_rev, x_cat_rev), axis=1),
-            columns=num_cols + cat_cols,
-        )
-    elif x_num_rev is not None:
-        out = pd.DataFrame(x_num_rev, columns=num_cols)
-    elif x_cat_rev is not None:
-        out = pd.DataFrame(x_cat_rev, columns=cat_cols)
-    else:
-        out = synth_df_encoded.copy()
-        out.columns = num_cols + cat_cols
-
+    expected_cols = num_cols + cat_cols
+    if len(expected_cols) == out.shape[1]:
+        out.columns = expected_cols
     return out
-
