@@ -44,7 +44,68 @@ function App() {
   };
 
   const handleFileChange = (e) => {
-    setDataFile(e.target.files[0]);
+    const file = e.target.files[0];
+    if (!file) {
+      setDataFile(null);
+      return;
+    }
+
+    // Reset previous errors and messages
+    setError('');
+    setMessage('');
+
+    // Basic file type check for immediate feedback
+    if (!file.name.endsWith('.csv') && !file.name.endsWith('.zip')) {
+      setError('Invalid file type. Please upload a CSV or a Zip file containing a CSV.');
+      setDataFile(null);
+      e.target.value = null; // Reset file input
+      return;
+    }
+
+    // For CSV files, perform validation
+    if (file.name.endsWith('.csv')) {
+      Papa.parse(file, {
+        skipEmptyLines: true,
+        complete: (results) => {
+          if (results.errors.length > 0) {
+            setError(`Error parsing CSV file: ${results.errors.map((err) => err.message).join(', ')}`);
+            setDataFile(null);
+            e.target.value = null;
+            return;
+          }
+
+          if (results.data.length < 2) { // At least one header row and one data row
+            setError('CSV file must have a header and at least one row of data.');
+            setDataFile(null);
+            e.target.value = null;
+            return;
+          }
+
+          const headerLength = results.data[0].length;
+          for (let i = 1; i < results.data.length; i++) {
+            if (results.data[i].length !== headerLength) {
+              setError(`Row ${i + 1} has an inconsistent number of columns. Expected ${headerLength}, found ${results.data[i].length}.`);
+              setDataFile(null);
+              e.target.value = null;
+              return;
+            }
+          }
+
+          // If all checks pass
+          setDataFile(file);
+          setMessage('File is valid and ready for processing.');
+        },
+        error: (err) => {
+          setError(`An unexpected error occurred while parsing the file: ${err.message}`);
+          setDataFile(null);
+          e.target.value = null;
+        },
+      });
+    } else {
+      // For zip files, we'll rely on backend validation for now
+      setDataFile(file);
+      setMessage('Zip file selected. Validation will occur on the server.');
+    }
   };
 
   const handleLoadSample = () => {
