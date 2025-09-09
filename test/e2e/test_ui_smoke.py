@@ -15,7 +15,7 @@ E2E_ENABLED = os.getenv("E2E") == "1"
 @pytest.mark.e2e
 @pytest.mark.skipif(not E2E_ENABLED, reason="Set E2E=1 to run Playwright E2E test")
 def test_ui_smoke(tmp_path):
-    project_root = pathlib.Path(__file__).resolve().parents[1]
+    project_root = pathlib.Path(__file__).resolve().parents[2]
     backend_url = "http://localhost:8001"
     frontend_url = "http://localhost:5174"
 
@@ -30,8 +30,6 @@ def test_ui_smoke(tmp_path):
         [sys.executable, "-m", "uvicorn", "web_app.main:app", "--port", "8001"],
         cwd=str(project_root),
         env=env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
         text=True,
         **popen_kwargs,
     )
