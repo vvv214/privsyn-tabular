@@ -107,21 +107,12 @@ function SynthesisForm({
                 </select>
               </div>
               <div className="col-md-6">
-                <label htmlFor="num_preprocess" className="form-label">Numerical Preprocessing</label>
-                <select
-                  className="form-select"
-                  id="num_preprocess"
-                  name="num_preprocess"
-                  value={formData.num_preprocess}
-                  onChange={handleChange}
-                  required
-                >
-                  <option value="uniform_kbins">Uniform K-Bins</option>
-                  <option value="exp_kbins">Exponential K-Bins</option>
-                  <option value="privtree">PrivTree</option>
-                  <option value="dawa">DAWA</option>
-                  <option value="none">None</option>
-                </select>
+                <label className="form-label">Numerical Preprocessing</label>
+                <input type="hidden" name="num_preprocess" value={formData.num_preprocess} />
+                <div className="form-control-plaintext px-3 py-2 bg-light border rounded">
+                  Configure per-column binning after metadata inference.
+                </div>
+                <div className="form-text">We fall back to uniform bins if no overrides are supplied.</div>
               </div>
               {formData.method === 'privsyn' && (
                 <div className="col-md-6">

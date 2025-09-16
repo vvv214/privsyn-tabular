@@ -10,6 +10,7 @@ import pandas as pd
 import numpy as np
 import json
 import importlib # For dynamic import of evaluation scripts
+import math
 from .data_comparison import calculate_tvd_metrics
 from fastapi.staticfiles import StaticFiles
 import zipfile
@@ -34,7 +35,12 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
 from .synthesis_service import run_synthesis, Args # Import Args from synthesis_service
 import uuid # For generating unique IDs for temporary storage
-from .data_inference import infer_data_metadata, load_dataframe_from_uploaded_file
+from .data_inference import (
+    infer_data_metadata,
+    load_dataframe_from_uploaded_file,
+    canonicalize_category,
+    CATEGORY_NULL_TOKEN,
+)
 from fastapi import Response
 
 app = FastAPI()
@@ -204,23 +210,8 @@ async def synthesize_data(
         df.to_parquet(df_path, index=False)
         logger.info(f"Saved df to {df_path}")
 
-        # Save X_cat and X_num to temporary npy files if they exist
-        X_cat_path = None
-        if inferred_data['X_cat'] is not None:
-            X_cat_path = os.path.join(temp_dir, "X_cat.npy")
-            np.save(X_cat_path, inferred_data['X_cat'])
-            logger.info(f"Saved X_cat to {X_cat_path}")
-
-        X_num_path = None
-        if inferred_data['X_num'] is not None:
-            X_num_path = os.path.join(temp_dir, "X_num.npy")
-            np.save(X_num_path, inferred_data['X_num'])
-            logger.info(f"Saved X_num to {X_num_path}")
-
         inferred_data_temp_storage[unique_id] = {
             "df_path": df_path,
-            "X_cat_path": X_cat_path,
-            "X_num_path": X_num_path,
             "domain_data": inferred_data['domain_data'],
             "info_data": inferred_data['info_data'],
             "target_column": target_column,
@@ -252,6 +243,8 @@ async def synthesize_data(
             "domain_data": inferred_data['domain_data'],
             "info_data": inferred_data['info_data']
         })
+    except HTTPException:
+        raise
     except Exception as e:
         logger.exception("Error during data inference or file processing.")
         raise HTTPException(status_code=500, detail=f"File processing or inference failed: {str(e)}")
@@ -288,8 +281,6 @@ async def confirm_synthesis(
 
     temp_data = inferred_data_temp_storage.pop(unique_id) # Retrieve and remove from temp storage
     df_path = temp_data["df_path"]
-    X_cat_path = temp_data["X_cat_path"]
-    X_num_path = temp_data["X_num_path"]
     temp_dir = temp_data["temp_dir"]
 
     # Load df from temporary parquet file
@@ -297,18 +288,142 @@ async def confirm_synthesis(
     logger.info(f"Loaded df from {df_path}")
     log_memory_usage("confirm_synthesis_after_df_load")
 
-    # Load X_cat and X_num from temporary npy files if they exist
-    X_cat = np.load(X_cat_path, allow_pickle=True) if X_cat_path else None
-    if X_cat_path: logger.info(f"Loaded X_cat from {X_cat_path}")
-    X_num = np.load(X_num_path, allow_pickle=True) if X_num_path else None
-    if X_num_path: logger.info(f"Loaded X_num from {X_num_path}")
-
     target_column = temp_data["target_column"]
     synthesis_params = temp_data["synthesis_params"] # Retrieve synthesis parameters
 
     # Parse the JSON strings back into dictionaries
     domain_data = json.loads(confirmed_domain_data)
     info_data = json.loads(confirmed_info_data)
+
+    # Apply user overrides to the dataframe before encoding
+    processed_df = df.copy()
+    num_col_names = []
+    cat_col_names = []
+
+    def compute_bin_edges(series: pd.Series, min_bound: float, max_bound: float, binning_config: dict):
+        method = (binning_config or {}).get("method", "uniform")
+        bin_width = binning_config.get("bin_width") if binning_config else None
+        bin_count = binning_config.get("bin_count") if binning_config else None
+        growth_rate = binning_config.get("growth_rate") if binning_config else None
+
+        if min_bound is None or max_bound is None:
+            observed_min = series.min() if not series.empty else None
+            observed_max = series.max() if not series.empty else None
+            if min_bound is None:
+                min_bound = observed_min
+            if max_bound is None:
+                max_bound = observed_max
+
+        if min_bound is None or max_bound is None or max_bound <= min_bound:
+            return None, None, None
+
+        span = max_bound - min_bound
+        if bin_width and (bin_width > 0):
+            bin_count = int(math.ceil(span / bin_width))
+        if not bin_count or bin_count <= 0:
+            bin_count = 10
+
+        if method == "dp_privtree":
+            # TODO: integrate true PrivTree binning; for now fall back to uniform edges
+            logger.warning("PrivTree binning selected; using uniform edges as a placeholder until DP support is wired in.")
+
+        if method == "exponential" and growth_rate and growth_rate > 1:
+            weights = np.array([growth_rate ** i for i in range(bin_count)], dtype=float)
+            weights_sum = weights.sum()
+            cumulative = np.cumsum(weights) / weights_sum
+            edges = [min_bound] + list(min_bound + cumulative * span)
+        else:
+            edges = np.linspace(min_bound, max_bound, bin_count + 1).tolist()
+            if method != "dp_privtree":
+                method = "uniform"
+
+        return edges, method, bin_count
+
+    for column, config in domain_data.items():
+        col_type = config.get("type")
+        if col_type == "categorical":
+            cat_col_names.append(column)
+            categories_from_data = config.get("categories_from_data", [])
+            selected_categories = config.get("selected_categories", categories_from_data)
+            custom_categories = config.get("custom_categories", [])
+            special_token = config.get("special_token") or "__OTHER__"
+            excluded_strategy = config.get("excluded_strategy", "map_to_special")
+
+            if column in processed_df.columns:
+                canonical_series = processed_df[column].apply(canonicalize_category)
+            else:
+                logger.warning(f"Column '{column}' missing from dataframe during categorical processing.")
+                canonical_series = pd.Series([], dtype=str)
+
+            excluded_categories = config.get("excluded_categories")
+            if excluded_categories is None:
+                excluded_categories = [cat for cat in categories_from_data if cat not in selected_categories]
+
+            selected_set = set(selected_categories + custom_categories)
+            excluded_set = set(excluded_categories)
+
+            if excluded_strategy == "map_to_special":
+                def map_value(value: str) -> str:
+                    if value in selected_set or value in custom_categories:
+                        return value
+                    return special_token
+
+                canonical_series = canonical_series.apply(map_value)
+                final_categories = list({*selected_set, *custom_categories, special_token})
+            else:
+                final_categories = list({*selected_set, *custom_categories, *excluded_set})
+
+            if CATEGORY_NULL_TOKEN in canonical_series.values and CATEGORY_NULL_TOKEN not in final_categories:
+                final_categories.append(CATEGORY_NULL_TOKEN)
+
+            config["categories"] = final_categories
+            config["size"] = len(final_categories)
+            config["excluded_categories"] = list(excluded_set)
+            processed_df[column] = canonical_series.astype(str)
+        elif col_type == "numerical":
+            num_col_names.append(column)
+            bounds = config.get("bounds", {})
+            col_series = pd.to_numeric(processed_df[column], errors="coerce") if column in processed_df.columns else pd.Series([], dtype=float)
+
+            min_bound = bounds.get("min")
+            max_bound = bounds.get("max")
+            summary = config.get("numeric_summary") or config.get("numeric_candidate_summary") or {}
+            if min_bound is None:
+                min_bound = summary.get("min")
+            if max_bound is None:
+                max_bound = summary.get("max")
+
+            if min_bound is not None:
+                col_series = col_series.clip(lower=min_bound)
+            if max_bound is not None:
+                col_series = col_series.clip(upper=max_bound)
+
+            fill_value = min_bound if min_bound is not None else 0
+            col_series = col_series.fillna(fill_value)
+
+            edges, resolved_method, resolved_count = compute_bin_edges(col_series, min_bound, max_bound, config.get("binning"))
+            if edges is not None:
+                config.setdefault("binning", {})
+                config["binning"]["edges"] = edges
+                config["binning"]["method"] = resolved_method
+                config["binning"]["bin_count"] = resolved_count
+
+            processed_df[column] = col_series
+            config["bounds"] = {"min": min_bound, "max": max_bound}
+            if config.get("binning", {}).get("bin_count"):
+                config["size"] = int(config["binning"]["bin_count"])
+            else:
+                config["size"] = int(col_series.nunique()) if not col_series.empty else 0
+        else:
+            logger.debug(f"Column '{column}' has unsupported type '{col_type}'.")
+
+    info_data["num_columns"] = num_col_names
+    info_data["cat_columns"] = cat_col_names
+    info_data["n_num_features"] = len(num_col_names)
+    info_data["n_cat_features"] = len(cat_col_names)
+
+    X_num = processed_df[num_col_names].to_numpy(dtype=float) if num_col_names else None
+    X_cat = processed_df[cat_col_names].astype(str).to_numpy() if cat_col_names else None
 
     try:
         # Create a persistent directory for this synthesis run (still needed for synthesized_csv_path)
@@ -321,33 +436,7 @@ async def confirm_synthesis(
         with open(os.path.join(synthesis_run_dir, "info.json"), "w") as f:
             json.dump(info_data, f, indent=4)
 
-        # Construct original_df from in-memory data
-        df_parts = []
-        
-        num_col_names = [col for col in domain_data if domain_data[col]['type'] == 'numerical']
-        if X_num is not None and num_col_names:
-            if len(num_col_names) == X_num.shape[1]:
-                df_parts.append(pd.DataFrame(X_num, columns=num_col_names))
-            else:
-                logger.error(f"Mismatch in numerical columns during original_df construction: domain.json has {len(num_col_names)}, X_num has {X_num.shape[1]}")
-                df_parts.append(pd.DataFrame(X_num, columns=[f'num_col_{i}' for i in range(X_num.shape[1])]))
-
-        cat_col_names = [col for col in domain_data if domain_data[col]['type'] == 'categorical']
-        if X_cat is not None and cat_col_names:
-            if len(cat_col_names) == X_cat.shape[1]:
-                df_parts.append(pd.DataFrame(X_cat, columns=cat_col_names))
-            else:
-                logger.error(f"Mismatch in categorical columns during original_df construction: domain.json has {len(cat_col_names)}, X_cat has {X_cat.shape[1]}")
-                df_parts.append(pd.DataFrame(X_cat, columns=[f'cat_col_{i}' for i in range(X_cat.shape[1])]))
-
-        if not df_parts:
-            raise ValueError("No numerical or categorical data found to construct original_df.")
-
-        # Concatenate parts, ensuring column order based on domain.json
-        all_domain_cols_ordered = list(domain_data.keys())
-        combined_df = pd.concat(df_parts, axis=1)
-        final_columns = [col for col in all_domain_cols_ordered if col in combined_df.columns]
-        original_df = combined_df[final_columns]
+        original_df = processed_df[num_col_names + cat_col_names]
         logger.info(f"Successfully constructed in-memory original_df with shape: {original_df.shape}")
 
         # Prepare arguments for run_synthesis
@@ -401,6 +490,8 @@ async def confirm_synthesis(
         log_memory_usage("confirm_synthesis_before_return")
 
         return JSONResponse(content={"message": "Data synthesis initiated successfully!", "dataset_name": dataset_name})
+    except HTTPException:
+        raise
     except Exception as e:
         logger.exception("Error during synthesis confirmation.")
         raise HTTPException(status_code=500, detail=f"Synthesis failed: {str(e)}")

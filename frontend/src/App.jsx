@@ -8,7 +8,7 @@ import ResultsDisplay from './components/ResultsDisplay';
 import LoadingOverlay from './components/LoadingOverlay';
 import './index.css';
 
-const API_URL = import.meta.env.VITE_API_BASE_URL;
+const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('form'); // 'form', 'confirm_metadata', or 'result'

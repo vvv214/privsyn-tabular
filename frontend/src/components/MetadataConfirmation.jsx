@@ -1,42 +1,225 @@
 import React, { useState, useEffect } from 'react';
+import CategoricalEditor from './CategoricalEditor';
+import NumericalEditor from './NumericalEditor';
+
+const SPECIAL_TOKEN_DEFAULT = '__OTHER__';
 
 const MetadataConfirmation = ({ uniqueId, inferredDomainData, inferredInfoData, onConfirm, onCancel }) => {
-    const [domainData, setDomainData] = useState(inferredDomainData);
+    const [domainData, setDomainData] = useState({});
     const [infoData, setInfoData] = useState(inferredInfoData);
 
+    const inferenceSettings = infoData?.inference_settings || {};
+    const inferenceReport = infoData?.inference_report || {};
+
+    const normalizeDomainData = (rawDomain) => {
+        const normalized = {};
+        Object.entries(rawDomain || {}).forEach(([column, details]) => {
+            if (details.type === 'categorical') {
+                const categories = Array.isArray(details.categories) ? [...details.categories] : [];
+                const selected = details.selected_categories ? [...details.selected_categories] : [...categories];
+                const custom = details.custom_categories ? [...details.custom_categories] : [];
+                const normalizedEntry = {
+                    ...details,
+                    categories,
+                    selected_categories: selected,
+                    custom_categories: custom,
+                    excluded_strategy: details.excluded_strategy || 'map_to_special',
+                    special_token: details.special_token || SPECIAL_TOKEN_DEFAULT,
+                    numeric_candidate_summary: details.numeric_candidate_summary || null,
+                    nonNumericWarning: false,
+                };
+                normalizedEntry.size = new Set([...(normalizedEntry.selected_categories || []), ...(normalizedEntry.custom_categories || [])]).size || details.size || categories.length;
+                normalized[column] = normalizedEntry;
+            } else {
+                const summary = details.numeric_summary || {};
+                const bounds = {
+                    min: details.bounds?.min ?? summary.min ?? '',
+                    max: details.bounds?.max ?? summary.max ?? '',
+                };
+                const defaultBinCount = details.binning?.bin_count ?? Math.min(20, Math.max(5, details.size || 10));
+                const normalizedEntry = {
+                    ...details,
+                    bounds,
+                    binning: {
+                        method: details.binning?.method || 'uniform',
+                        bin_count: defaultBinCount,
+                        bin_width: details.binning?.bin_width ?? '',
+                        growth_rate: details.binning?.growth_rate ?? '',
+                        dp_budget_fraction: details.binning?.dp_budget_fraction ?? 0.05,
+                    },
+                    numeric_candidate_summary: details.numeric_candidate_summary || details.numeric_summary || null,
+                    nonNumericWarning: false,
+                };
+                normalized[column] = normalizedEntry;
+            }
+        });
+        return normalized;
+    };
+
     useEffect(() => {
-        setDomainData(inferredDomainData);
-        setInfoData(inferredInfoData);
+        const normalized = normalizeDomainData(inferredDomainData);
+        setDomainData(normalized);
+        if (inferredInfoData) {
+            const numColumns = Object.entries(normalized).filter(([, entry]) => entry.type === 'numerical').map(([columnName]) => columnName);
+            const catColumns = Object.entries(normalized).filter(([, entry]) => entry.type === 'categorical').map(([columnName]) => columnName);
+            setInfoData({
+                ...inferredInfoData,
+                num_columns: numColumns,
+                cat_columns: catColumns,
+                n_num_features: numColumns.length,
+                n_cat_features: catColumns.length,
+            });
+        } else {
+            setInfoData(inferredInfoData);
+        }
     }, [inferredDomainData, inferredInfoData]);
 
     
 
     const handleDomainChange = (key, subKey, value) => {
         setDomainData(prev => {
+            const previousEntry = prev[key] || {};
+            let updatedEntry = { ...previousEntry };
+
+            if (subKey === 'type') {
+                updatedEntry.type = value;
+                if (value === 'categorical') {
+                    const categories = Array.isArray(previousEntry.categories) ? previousEntry.categories : [];
+                    updatedEntry = {
+                        ...updatedEntry,
+                        categories,
+                        selected_categories: [...(previousEntry.selected_categories || categories)],
+                        custom_categories: [...(previousEntry.custom_categories || [])],
+                        excluded_strategy: previousEntry.excluded_strategy || 'map_to_special',
+                        special_token: previousEntry.special_token || SPECIAL_TOKEN_DEFAULT,
+                        size: new Set([...(previousEntry.selected_categories || categories), ...(previousEntry.custom_categories || [])]).size || (previousEntry.size ?? categories.length),
+                        nonNumericWarning: false,
+                    };
+                } else {
+                    const candidateSummary = previousEntry.numeric_candidate_summary || previousEntry.numeric_summary;
+                    const hasCandidate = candidateSummary && candidateSummary.min !== null && candidateSummary.max !== null;
+                    updatedEntry = {
+                        ...updatedEntry,
+                        custom_categories: [],
+                        selected_categories: [],
+                        bounds: {
+                            min: previousEntry.bounds?.min ?? (hasCandidate ? candidateSummary.min : ''),
+                            max: previousEntry.bounds?.max ?? (hasCandidate ? candidateSummary.max : ''),
+                        },
+                        binning: {
+                            method: previousEntry.binning?.method || 'uniform',
+                            bin_count: previousEntry.binning?.bin_count ?? Math.min(20, Math.max(5, previousEntry.size || 10)),
+                            bin_width: previousEntry.binning?.bin_width ?? '',
+                            growth_rate: previousEntry.binning?.growth_rate ?? '',
+                            dp_budget_fraction: previousEntry.binning?.dp_budget_fraction ?? 0.05,
+                        },
+                        nonNumericWarning: !hasCandidate,
+                    };
+                }
+            } else {
+                updatedEntry = {
+                    ...updatedEntry,
+                    [subKey]: parseFloat(value) || 0
+                };
+            }
+
             const updatedDomain = {
                 ...prev,
-                [key]: {
-                    ...prev[key],
-                    [subKey]: subKey === 'type' ? value : parseFloat(value) || 0
-                }
+                [key]: updatedEntry
             };
 
             // After changing the type, we need to recalculate the counts for n_num_features and n_cat_features
             if (subKey === 'type') {
                 let num_count = 0;
                 let cat_count = 0;
-                Object.values(updatedDomain).forEach(v => {
-                    if (v.type === 'numerical') num_count++;
-                    else if (v.type === 'categorical') cat_count++;
+                const num_columns = [];
+                const cat_columns = [];
+                Object.entries(updatedDomain).forEach(([columnName, entry]) => {
+                    if (entry.type === 'numerical') {
+                        num_count++;
+                        num_columns.push(columnName);
+                    } else if (entry.type === 'categorical') {
+                        cat_count++;
+                        cat_columns.push(columnName);
+                    }
                 });
                 setInfoData(prevInfo => ({
                     ...prevInfo,
                     n_num_features: num_count,
-                    n_cat_features: cat_count
+                    n_cat_features: cat_count,
+                    num_columns,
+                    cat_columns
                 }));
             }
             return updatedDomain;
         });
+    };
+
+    const sanitizeNumber = (value) => {
+        if (value === '' || value === null || value === undefined) {
+            return null;
+        }
+        const asNumber = Number(value);
+        if (Number.isNaN(asNumber) || !Number.isFinite(asNumber)) {
+            return null;
+        }
+        return asNumber;
+    };
+
+    const buildConfirmedDomainData = () => {
+        const serialized = {};
+        Object.entries(domainData).forEach(([column, details]) => {
+            if (details.type === 'categorical') {
+                const categoriesFromData = Array.isArray(details.categories) ? details.categories : [];
+                const selected = Array.isArray(details.selected_categories) && details.selected_categories.length > 0
+                    ? details.selected_categories
+                    : categoriesFromData;
+                const custom = Array.isArray(details.custom_categories) ? details.custom_categories : [];
+                const excluded = categoriesFromData.filter((cat) => !selected.includes(cat));
+                const specialToken = details.special_token || SPECIAL_TOKEN_DEFAULT;
+                let finalCategories;
+                if (details.excluded_strategy === 'keep_in_domain') {
+                    finalCategories = Array.from(new Set([...selected, ...custom, ...excluded]));
+                } else {
+                    finalCategories = Array.from(new Set([...selected, ...custom, specialToken]));
+                }
+                serialized[column] = {
+                    type: 'categorical',
+                    categories_from_data: categoriesFromData,
+                    selected_categories: selected,
+                    custom_categories: custom,
+                    excluded_categories: excluded,
+                    excluded_strategy: details.excluded_strategy || 'map_to_special',
+                    special_token: specialToken,
+                    category_null_token: details.category_null_token,
+                    value_counts: details.value_counts || {},
+                    categories: finalCategories,
+                    size: finalCategories.length,
+                    numeric_candidate_summary: details.numeric_candidate_summary,
+                };
+            } else {
+                const bounds = {
+                    min: sanitizeNumber(details.bounds?.min),
+                    max: sanitizeNumber(details.bounds?.max),
+                };
+                const binning = {
+                    method: details.binning?.method || 'uniform',
+                    bin_count: sanitizeNumber(details.binning?.bin_count),
+                    bin_width: sanitizeNumber(details.binning?.bin_width),
+                    growth_rate: sanitizeNumber(details.binning?.growth_rate),
+                    dp_budget_fraction: details.binning?.dp_budget_fraction ?? 0.05,
+                };
+                serialized[column] = {
+                    type: 'numerical',
+                    bounds,
+                    binning,
+                    numeric_summary: details.numeric_summary,
+                    numeric_candidate_summary: details.numeric_candidate_summary,
+                    size: details.size,
+                };
+            }
+        });
+        return serialized;
     };
 
     const handleInfoChange = (key, value) => {
@@ -45,7 +228,13 @@ const MetadataConfirmation = ({ uniqueId, inferredDomainData, inferredInfoData, 
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        onConfirm(uniqueId, domainData, infoData);
+        const serializedDomain = buildConfirmedDomainData();
+        const nextInfo = {
+            ...infoData,
+            num_columns: Object.entries(serializedDomain).filter(([, details]) => details.type === 'numerical').map(([col]) => col),
+            cat_columns: Object.entries(serializedDomain).filter(([, details]) => details.type === 'categorical').map(([col]) => col),
+        };
+        onConfirm(uniqueId, serializedDomain, nextInfo);
     };
 
     return (
@@ -60,6 +249,9 @@ const MetadataConfirmation = ({ uniqueId, inferredDomainData, inferredInfoData, 
                             <h4 className="mb-0">Dataset Information</h4>
                         </div>
                         <div className="card-body">
+                            <div className="alert alert-info" role="alert">
+                                <strong>How did we infer types?</strong> Numerical integer columns with fewer than {inferenceSettings.integer_unique_threshold ?? '...'} unique values, or sparse integers with fewer than {Math.round((inferenceSettings.integer_unique_ratio_threshold ?? 0) * 100)}% uniques (max {inferenceSettings.integer_unique_max ?? '...'}) are treated as categorical—for example, <code>age</code> may become categorical when only a handful of ages appear in the uploaded sample. Float columns need at least {inferenceSettings.float_unique_threshold ?? '...'} unique values to remain numerical.
+                            </div>
                             <div className="row">
                                 <div className="col-md-6 mb-3 d-flex justify-content-center align-items-center flex-column">
                                     <label htmlFor="info_name" className="form-label">Name</label>
@@ -95,6 +287,11 @@ const MetadataConfirmation = ({ uniqueId, inferredDomainData, inferredInfoData, 
                                         <div className="card h-100">
                                             <div className="card-body">
                                                 <h5 className="card-title text-center mb-3">{key}</h5>
+                                                <p className="text-muted small">
+                                                    {inferenceReport[key]?.reasons?.map((reason, idx) => (
+                                                        <span key={reason.code || idx} className="d-block">- {reason.message}</span>
+                                                    )) || 'Reasoning unavailable.'}
+                                                </p>
                                                 <div className="mb-2">
                                                     <label htmlFor={`domain_${key}_type`} className="form-label">Type</label>
                                                     <select
@@ -107,16 +304,34 @@ const MetadataConfirmation = ({ uniqueId, inferredDomainData, inferredInfoData, 
                                                         <option value="numerical">Numerical</option>
                                                     </select>
                                                 </div>
-                                                <div>
-                                                    <label htmlFor={`domain_${key}_size`} className="form-label">{value.type === 'numerical' ? 'Unique Values' : 'Categories'}</label>
-                                                    <input
-                                                        type="number"
-                                                        id={`domain_${key}_size`}
-                                                        className="form-control"
-                                                        value={value.size || 0}
-                                                        onChange={(e) => handleDomainChange(key, 'size', e.target.value)}
+                                                {value.type === 'categorical' ? (
+                                                    <CategoricalEditor
+                                                        domainDetails={value}
+                                                        onChange={(updatedDetails) => {
+                                                            setDomainData(prevDomain => ({
+                                                                ...prevDomain,
+                                                                [key]: {
+                                                                    ...prevDomain[key],
+                                                                    ...updatedDetails,
+                                                                }
+                                                            }));
+                                                        }}
                                                     />
-                                                </div>
+                                                ) : (
+                                                    <NumericalEditor
+                                                        domainDetails={value}
+                                                        showNonNumericWarning={value.nonNumericWarning}
+                                                        onChange={(updatedDetails) => {
+                                                            setDomainData(prevDomain => ({
+                                                                ...prevDomain,
+                                                                [key]: {
+                                                                    ...prevDomain[key],
+                                                                    ...updatedDetails,
+                                                                }
+                                                            }));
+                                                        }}
+                                                    />
+                                                )}
                                             </div>
                                         </div>
                                     </div>

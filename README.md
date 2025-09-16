@@ -73,6 +73,7 @@ To get started with PrivSyn, follow these steps:
     npm run dev -- --port 5174
     ```
     The frontend will typically run on `http://localhost:5174` (or another port as indicated by Vite).
+    If `VITE_API_BASE_URL` is not set, the app will default requests to `http://127.0.0.1:8001`.
 
 ### Unit Tests (Python)
 
@@ -89,6 +90,39 @@ Useful options:
 Tests use markers:
 - `slow`: long-running tests; exclude with `-m "not slow"`
 - `e2e`: frontend+backend end-to-end tests (see below)
+
+Run targeted coverage for the metadata/data-inference pipeline:
+
+```
+.venv/bin/pytest \
+  --cov=web_app.main \
+  --cov=web_app.data_inference \
+  --cov=preprocess_common.load_data_common \
+  --cov-report=term \
+  test/test_metadata_overrides.py test/test_preprocessing.py test/test_data_inference.py
+```
+
+This focuses the coverage on the components updated to support editable metadata while avoiding the heavier algorithm suites.
+
+We keep UI automation under `test_e2e/` (Playwright) and the rest of the suite under `test/`; keeping them separate ensures fast inner-loop runs while still supporting browser-based checks when needed.
+
+### Helper Scripts
+
+The `scripts/` directory contains a few convenience wrappers:
+
+- `start_backend.sh` / `start_backend_prod.sh`: run the FastAPI app in dev or Gunicorn mode.
+- `start_frontend.sh` / `start_frontend_prod.sh`: launch Vite dev server or serve the production build.
+- `bench_backend.py`, `bench_synthesis_speed.py`: quick performance probes for inference and synthesis stages.
+- `run_e2e.sh`: boot both servers and execute the Playwright E2E suite.
+
+Temporary runtime artifacts live under `temp_synthesis_output/` and `temp_bench_runs/`; both are ignored via `.gitignore` and can be safely cleared if disk space is needed.
+
+### Metadata Confirmation UI Highlights
+
+- **Inference explanation.** The screen shows the heuristics coming from `web_app/data_inference.py`: integer columns with fewer than 20 distinct values (or very sparse integers) default to categorical, floats need ≥10 distinct values to remain numerical, and non-numeric dtypes are always categorical. This clarifies cases like `age` being inferred as categorical when the uploaded sample contains only a handful of ages.
+- **Categorical controls.** Each categorical attribute lists detected values with frequency counts. You can deselect values (treated as unexpected), add custom categories, and decide whether unexpected values are mapped to a special token (default `__OTHER__`) or remain part of the domain. Missing values are represented by a `__NULL__` token.
+- **Numerical controls.** Numerical attributes expose clip bounds, target bin width/count, and a strategy selector (uniform spacing, exponential growth with a user-supplied rate, or a placeholder PrivTree option that currently falls back to uniform edges while reserving privacy budget for future DP use).
+- **Backend alignment.** On confirmation the backend reconstructs the dataframe, applies the overrides (including categorical special-token mapping and numeric clipping/binning), and only then invokes preprocessing and synthesis, ensuring the confirmed metadata is authoritative.
 
 ### 1.1 End-to-End Test (Frontend + Backend, optional)
 

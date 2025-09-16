@@ -17,6 +17,9 @@ class data_preporcesser_common():
         self.cat_col = 0
         self.args = args
         self.cat_output_type = 'one_hot' if self.args.method == 'merf' else 'ordinal'
+        self.numeric_edges = {}
+        self.num_col_names = []
+        self.cat_col_names = []
 
     def load_data(self, X_num_raw: np.ndarray, X_cat_raw: np.ndarray, rho, user_domain_data: dict = None, user_info_data: dict = None):
         # preprocesser and column info will be saved in this class
@@ -25,6 +28,8 @@ class data_preporcesser_common():
         num_prep = self.args.num_preprocess
         rare_threshold = self.args.rare_threshold
         self.logger.info(f'Numerical discretizer is {num_prep}')
+
+        self.numeric_edges = {}
 
         X_num = X_num_raw
         X_cat = X_cat_raw
@@ -60,22 +65,33 @@ class data_preporcesser_common():
             else:
                 rho = cdp_rho(0.1*(num_divide+cat_divide)*1.0, 0.1*(num_divide+cat_divide)*1e-5) # this is the default value setting
     
+        # Get actual column names from user_info_data
+        num_col_names_actual = user_info_data.get("num_columns", [])
+        cat_col_names_actual = user_info_data.get("cat_columns", [])
+        self.num_col_names = num_col_names_actual
+        self.cat_col_names = cat_col_names_actual
+
         # The 'domain' variable for clipping will be user_domain_data if provided, else domain
         domain_for_clipping = user_domain_data if user_domain_data is not None else domain
 
         if X_num is not None:
             self.logger.debug("Entering clipping loop")
             # Apply clipping based on user_domain_data for numerical features
-            for key, value in domain_for_clipping.items(): # Use domain_for_clipping
-                if key.startswith('num_attr_') and isinstance(value, dict) and 'min' in value and 'max' in value:
-                    try:
-                        # Extract the index from 'num_attr_X' (e.g., 'num_attr_1' -> 0)
-                        col_index = int(key.split('_')[-1]) - 1
-                        if 0 <= col_index < X_num.shape[1]:
-                            X_num[:, col_index] = np.clip(X_num[:, col_index], value['min'], value['max'])
-                    except (ValueError, IndexError):
-                        # Handle cases where key format is unexpected or index is out of bounds
-                        pass
+            for idx, col_name in enumerate(num_col_names_actual):
+                col_config = domain_for_clipping.get(col_name) if isinstance(domain_for_clipping, dict) else None
+                bounds = None
+                if isinstance(col_config, dict):
+                    if 'bounds' in col_config and isinstance(col_config['bounds'], dict):
+                        bounds = col_config['bounds']
+                    elif 'min' in col_config and 'max' in col_config:
+                        bounds = {'min': col_config['min'], 'max': col_config['max']}
+                if bounds:
+                    min_bound = bounds.get('min')
+                    max_bound = bounds.get('max')
+                    if min_bound is not None:
+                        X_num[:, idx] = np.maximum(X_num[:, idx], min_bound)
+                    if max_bound is not None:
+                        X_num[:, idx] = np.minimum(X_num[:, idx], max_bound)
             
             if num_prep != 'none':
                 ord = False if self.args.method in ['rap', 'gsd'] else True
@@ -91,9 +107,19 @@ class data_preporcesser_common():
 
         self.logger.debug("Defining domain_for_clipping")
 
-        # Get actual column names from user_info_data
-        num_col_names_actual = user_info_data.get("num_columns", [])
-        cat_col_names_actual = user_info_data.get("cat_columns", [])
+        # Apply user-provided binning edges
+        if X_num is not None and num_col_names_actual:
+            X_num = X_num.astype(float)
+            for idx, col_name in enumerate(num_col_names_actual):
+                domain_entry = domain.get(col_name, {}) if isinstance(domain, dict) else {}
+                binning_info = domain_entry.get('binning') if isinstance(domain_entry, dict) else None
+                edges = binning_info.get('edges') if isinstance(binning_info, dict) else None
+                if edges:
+                    edges_array = np.array(edges, dtype=float)
+                    if edges_array.ndim == 1 and edges_array.size >= 2:
+                        bins = np.digitize(X_num[:, idx], edges_array[1:-1], right=False).astype(int)
+                        X_num[:, idx] = bins
+                        self.numeric_edges[col_name] = edges_array.tolist()
 
         # Construct df using actual column names
         if X_num is None:
@@ -146,13 +172,22 @@ class data_preporcesser_common():
                         x_num_clipped = np.clip(x_num_clipped, 0, max_bin_index)
                         self.logger.debug(f"x_num after clip - min: {x_num_clipped.min()}, max: {x_num_clipped.max()}")
                         x_num = x_num_clipped # Use the clipped copy
-                    
+
                     # Ensure x_num is a contiguous integer array before inverse_transform
                     x_num = np.ascontiguousarray(x_num).astype(int)
                     x_num = self.num_encoder.inverse_transform(x_num).astype(float)
                 except IndexError as e:
                     self.logger.warning(f"IndexError during numerical inverse_transform. Returning None for numerical data. Error: {e}")
                     x_num = None # Return None for numerical data if inverse_transform fails
+            if x_num is not None and self.numeric_edges:
+                for idx, col_name in enumerate(self.num_col_names):
+                    edges = self.numeric_edges.get(col_name)
+                    if edges:
+                        edges_array = np.array(edges, dtype=float)
+                        if edges_array.size >= 2:
+                            midpoints = (edges_array[:-1] + edges_array[1:]) / 2
+                            indices = np.clip(x_num[:, idx].astype(int), 0, len(midpoints) - 1)
+                            x_num[:, idx] = midpoints[indices]
             if path is not None:
                 np.save(os.path.join(path, 'X_num_train.npy'), x_num)
 
