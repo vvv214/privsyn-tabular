@@ -1,7 +1,7 @@
 import itertools
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional
 
 import numpy as np
 import pandas as pd
@@ -10,21 +10,11 @@ from method.AIM.aim import AIM, add_default_params
 from method.AIM.mbi.Dataset import Dataset
 from method.AIM.mbi.Domain import Domain
 from method.api.base import FittedSynth, PrivacySpec, RunConfig, Synthesizer
+from method.api.utils import enforce_dataframe_schema, split_df_by_type
 from preprocess_common.load_data_common import data_preporcesser_common
 from util.rho_cdp import cdp_rho
 
 logger = logging.getLogger(__name__)
-
-
-def _split_df(
-    df: pd.DataFrame, info: Dict[str, Any]
-) -> Tuple[Optional[np.ndarray], Optional[np.ndarray]]:
-    num_cols = info.get("num_columns", []) or []
-    cat_cols = info.get("cat_columns", []) or []
-
-    X_num = df[num_cols].to_numpy(dtype=float) if len(num_cols) > 0 else None
-    X_cat = df[cat_cols].astype(str).to_numpy() if len(cat_cols) > 0 else None
-    return X_num, X_cat
 
 
 def _make_aim_domain_mapping(
@@ -70,7 +60,10 @@ class FittedAIM(FittedSynth):
 
     def sample(self, n: int, seed: Optional[int] = None) -> pd.DataFrame:
         if seed is not None:
-            np.random.seed(seed)
+            if hasattr(self._aim_generator, "prng"):
+                self._aim_generator.prng.seed(seed)
+            else:
+                np.random.seed(seed)
 
         synth_dataset = self._aim_generator.syn_data(n, path=None, preprocesser=None)
         synth_encoded_df: pd.DataFrame = synth_dataset.df
@@ -93,26 +86,7 @@ class FittedAIM(FittedSynth):
             out = synth_encoded_df.copy()
             out.columns = num_cols + cat_cols
 
-        original_dtypes = self._original_dtypes
-        if original_dtypes is not None:
-            for col, dtype in original_dtypes.items():
-                if col in out.columns:
-                    try:
-                        if pd.api.types.is_integer_dtype(dtype):
-                            out[col] = (
-                                pd.to_numeric(out[col], errors="coerce")
-                                .fillna(0)
-                                .astype(dtype)
-                            )
-                        else:
-                            out[col] = out[col].astype(dtype)
-                    except (ValueError, TypeError):
-                        out[col] = pd.to_numeric(out[col], errors="coerce")
-        else:
-            for col in num_cols:
-                if col in out.columns:
-                    out[col] = pd.to_numeric(out[col], errors="coerce")
-
+        out = enforce_dataframe_schema(out, self._original_dtypes, num_cols, cat_cols)
         return out
 
     def metrics(self, original_df: Optional[pd.DataFrame] = None) -> Dict[str, float]:
@@ -168,7 +142,7 @@ class AIMSynthesizer(Synthesizer):
 
         total_rho = cdp_rho(args.epsilon, args.delta)
         preprocesser = data_preporcesser_common(args)
-        X_num_raw, X_cat_raw = _split_df(df, info)
+        X_num_raw, X_cat_raw = split_df_by_type(df, info)
 
         df_processed, _domain_list, _ = preprocesser.load_data(
             X_num_raw,
@@ -181,6 +155,8 @@ class AIMSynthesizer(Synthesizer):
         aim_domain_map = _make_aim_domain_mapping(df_processed, domain)
 
         args_obj = add_default_params(args)
+        if "num_marginals" in extra_config:
+            args_obj.num_marginals = extra_config.pop("num_marginals")
         args_obj.extra = extra_config
 
         aim_domain = Domain(aim_domain_map.keys(), aim_domain_map.values())

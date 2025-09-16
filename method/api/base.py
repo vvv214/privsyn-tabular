@@ -35,11 +35,9 @@ class FittedSynth:
         return {}
 
     def metrics(self, original_df: Optional[pd.DataFrame] = None) -> Dict[str, float]:
-        # By default, adapters do not provide metrics.
-        # This hook is for native synthesizers to override.
-        return {
-            "record_count": self.sample(n=original_df.shape[0] if original_df is not None else 10).shape[0],
-        }
+        n_synth = original_df.shape[0] if original_df is not None else 10
+        synth_df = self.sample(n=n_synth)
+        return {"record_count": float(synth_df.shape[0])}
 
 
 class Synthesizer:
@@ -200,4 +198,3 @@ def register_adapter(
         return _AdapterSynth(method=method, prepare_fn=prepare_fn, run_fn=run_fn)
 
     SynthRegistry.register(method, _factory)
-

@@ -1,10 +1,6 @@
 import os
 import numpy as np
 import pandas as pd
-import json
-import math
-import copy
-import shutil
 import logging
 from typing import Dict, Any, Tuple, Callable, Optional
 
@@ -15,7 +11,6 @@ logger = logging.getLogger(__name__)
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
 # Import necessary modules from the main project
-from util.rho_cdp import cdp_rho
 from .methods_dispatcher import synthesize as dispatch_synthesize
 
 class Args:
@@ -92,6 +87,30 @@ async def run_synthesis(
         'num_preprocess': args.num_preprocess,
         'rare_threshold': args.rare_threshold,
     }
+
+    # Surface advanced knobs so native synthesizers (e.g., PrivSyn) can honour
+    # overrides from the UI instead of silently falling back to defaults.
+    advanced_keys = (
+        'consist_iterations',
+        'non_negativity',
+        'append',
+        'sep_syn',
+        'initialize_method',
+        'update_method',
+        'update_rate_method',
+        'update_rate_initial',
+        'update_iterations',
+        'degree',
+        'max_cells',
+        'max_iters',
+        'max_model_size',
+        'num_marginals',
+    )
+    for key in advanced_keys:
+        if hasattr(args, key):
+            value = getattr(args, key)
+            if value is not None:
+                config[key] = value
 
     logger.info(f"Dispatching synthesis method: {args.method}")
     synth_df = dispatch_synthesize(

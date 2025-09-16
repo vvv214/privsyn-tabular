@@ -1,6 +1,7 @@
 import os, sys
 import numpy as np
 import pandas as pd
+import pytest
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
@@ -8,6 +9,7 @@ sys.path.insert(0, project_root)
 
 def test_aim_adapter_numeric_dtypes():
     from method.AIM import adapter as aim_adapter
+    from method.AIM.cdp2adp import cdp_rho
 
     rng = np.random.default_rng(0)
     df = pd.DataFrame({
@@ -38,10 +40,13 @@ def test_aim_adapter_numeric_dtypes():
         config={'dataset':'aim_dtype','epsilon':0.5,'delta':1e-5,
                 'max_iters': 20, 'max_model_size': 50, 'max_cells': 5000}
     )
+    generator = bundle["aim_generator"]
+    assert generator.max_iters == 20
+    assert generator.max_model_size == 50
+    assert generator.rho == pytest.approx(cdp_rho(0.5, 1e-5))
     out = aim_adapter.run(bundle, n_sample=10, epsilon=0.5, delta=1e-5)
     # numeric columns must be numeric dtype
     assert pd.api.types.is_numeric_dtype(out['x'])
     assert pd.api.types.is_numeric_dtype(out['y'])
     # categorical should be present
     assert out['z'].dtype == object or pd.api.types.is_string_dtype(out['z'])
-

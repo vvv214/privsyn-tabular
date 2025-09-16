@@ -6,6 +6,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
 
 import pytest
+from method.AIM.cdp2adp import cdp_rho
 
 
 def _build_simple_df(n=60):
@@ -57,7 +58,12 @@ def test_aim_adapter_basic_synthesize():
         },
     )
 
-    synth_df = aim_adapter.run(bundle, n_sample=20, epsilon=0.5, delta=1e-5)
+    generator = bundle["aim_generator"]
+    assert generator.max_model_size == 50
+    assert generator.max_iters == 50
+    assert generator.rho == pytest.approx(cdp_rho(0.5, 1e-5))
+
+    synth_df = aim_adapter.run(bundle, n_sample=20, epsilon=0.5, delta=1e-5, seed=123)
 
     assert isinstance(synth_df, pd.DataFrame)
     assert list(synth_df.columns) == ['num_a', 'num_b', 'cat_c']
@@ -67,3 +73,5 @@ def test_aim_adapter_basic_synthesize():
     assert synth_df['num_b'].max() <= df['num_b'].max()
     assert set(synth_df['cat_c'].unique()) <= set(df['cat_c'].unique())
 
+    repeat_df = aim_adapter.run(bundle, n_sample=20, epsilon=0.5, delta=1e-5, seed=123)
+    pd.testing.assert_frame_equal(synth_df, repeat_df)

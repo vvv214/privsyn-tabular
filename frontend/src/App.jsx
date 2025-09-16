@@ -192,7 +192,7 @@ function App() {
           setSynthesizedDataHeaders(results.meta.fields || []);
           setSynthesizedDataPreview(results.data.slice(0, 10));
           setCurrentPage('result');
-          handleEvaluate(['query', 'tvd']);
+          handleEvaluate();
         },
         error: () => setError('Failed to parse synthesized data for preview.'),
       });
@@ -211,14 +211,13 @@ function App() {
     setError('');
   };
 
-  const handleEvaluate = async (methods) => {
+  const handleEvaluate = async () => {
     setMessage('Evaluating data fidelity...');
     setError('');
     setEvaluationResults({});
 
     const data = new FormData();
     data.append('dataset_name', formData.dataset_name);
-    data.append('evaluation_methods', methods.map((m) => `eval_${m}`).join(','));
 
     try {
       const response = await axios.post(`${API_URL}/evaluate`, data, {

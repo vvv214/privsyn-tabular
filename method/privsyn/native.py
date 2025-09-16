@@ -1,27 +1,17 @@
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional
 
 import numpy as np
 import pandas as pd
 
 from method.api.base import FittedSynth, PrivacySpec, RunConfig, Synthesizer
+from method.api.utils import enforce_dataframe_schema, split_df_by_type
 from method.privsyn.privsyn import PrivSyn, add_default_params
 from preprocess_common.load_data_common import data_preporcesser_common
 from util.rho_cdp import cdp_rho
 
 logger = logging.getLogger(__name__)
-
-
-def _split_df(
-    df: pd.DataFrame, info: Dict[str, Any]
-) -> Tuple[Optional[np.ndarray], Optional[np.ndarray]]:
-    num_cols = info.get("num_columns", []) or []
-    cat_cols = info.get("cat_columns", []) or []
-
-    X_num = df[num_cols].to_numpy(dtype=float) if len(num_cols) > 0 else None
-    X_cat = df[cat_cols].astype(str).to_numpy() if len(cat_cols) > 0 else None
-    return X_num, X_cat
 
 
 class FittedPrivSyn(FittedSynth):
@@ -58,47 +48,73 @@ class FittedPrivSyn(FittedSynth):
 
         self._privsyn_generator.syn(n, self._preprocesser, parent_dir=None)
         out: pd.DataFrame = self._privsyn_generator.synthesized_df
-
-        # Ensure column names restored to original
         info = self._user_info
         num_cols = info.get("num_columns", []) or []
         cat_cols = info.get("cat_columns", []) or []
-        expected_cols = num_cols + cat_cols
-        if len(expected_cols) == out.shape[1]:
-            out.columns = expected_cols
-
-        # Enforce dtypes to match original
-        original_dtypes = self._original_dtypes
-        if original_dtypes is not None:
-            for col, dtype in original_dtypes.items():
-                if col in out.columns:
-                    try:
-                        if pd.api.types.is_integer_dtype(dtype):
-                            # Coerce to numeric, fill NaNs, then cast to integer
-                            out[col] = (
-                                pd.to_numeric(out[col], errors="coerce")
-                                .fillna(0)
-                                .astype(dtype)
-                            )
-                        else:
-                            out[col] = out[col].astype(dtype)
-                    except (ValueError, TypeError):
-                        # Fallback for columns that can't be cast
-                        out[col] = pd.to_numeric(out[col], errors="coerce")
-        else:
-            # Fallback for older bundles without dtypes
-            for col in num_cols:
-                if col in out.columns:
-                    out[col] = pd.to_numeric(out[col], errors="coerce")
-            for col in cat_cols:
-                if col in out.columns:
-                    out[col] = out[col].astype(str)
+        out = enforce_dataframe_schema(
+            out,
+            self._original_dtypes,
+            num_cols,
+            cat_cols,
+        )
         return out
 
-    def metrics(self, original_df: Optional[pd.DataFrame] = None) -> Dict[str, float]:
-        n_synth = original_df.shape[0] if original_df is not None else 10
+    def _internal_metrics(self, original_df: pd.DataFrame) -> Dict[str, float]:
+        """
+        Internal metrics for debugging privsyn.
+        This is a white-box evaluation that compares the marginals of the
+        original and synthetic data using the marginals selected by privsyn.
+        """
+        from method.privsyn.lib_dataset.dataset import Dataset
+        from method.privsyn.lib_marginal.marg import Marginal
+        from util.rho_cdp import cdp_rho
+        from method.api.utils import split_df_by_type
+
+        n_synth = original_df.shape[0]
         synth_df = self.sample(n=n_synth)
-        return {"record_count": float(synth_df.shape[0])}
+
+        total_rho = cdp_rho(self._privacy.epsilon, self._privacy.delta)
+        X_num_raw, X_cat_raw = split_df_by_type(original_df, self._user_info)
+        
+        domain_dict = {}
+        for attr, size in self._privsyn_generator.original_dataset.domain.config.items():
+            domain_dict[attr] = {'size': size}
+
+        df_processed, _, _ = self._preprocesser.load_data(
+            X_num_raw,
+            X_cat_raw,
+            total_rho,
+            user_domain_data=domain_dict,
+            user_info_data=self._user_info,
+        )
+        original_dataset = Dataset(df_processed, self._privsyn_generator.original_dataset.domain)
+
+        synth_X_num_raw, synth_X_cat_raw = split_df_by_type(synth_df, self._user_info)
+        synth_df_processed, _, _ = self._preprocesser.load_data(
+            synth_X_num_raw,
+            synth_X_cat_raw,
+            total_rho,
+            user_domain_data=domain_dict,
+            user_info_data=self._user_info,
+        )
+        synth_dataset = Dataset(synth_df_processed, self._privsyn_generator.original_dataset.domain)
+
+        errors = {}
+        for marg_spec in self._privsyn_generator.sel_marg_name:
+            original_marg = Marginal(original_dataset.domain.project(marg_spec), original_dataset.domain)
+            original_marg.count_records(original_dataset.df.values)
+            original_marg_norm = original_marg.calculate_normalize_count()
+
+            synth_marg = Marginal(synth_dataset.domain.project(marg_spec), synth_dataset.domain)
+            synth_marg.count_records(synth_dataset.df.values)
+            synth_marg_norm = synth_marg.calculate_normalize_count()
+            
+            error = np.abs(original_marg_norm - synth_marg_norm).sum() / 2.0
+            errors[str(marg_spec)] = error
+
+        return errors
+
+    
 
 
 class PrivSynSynthesizer(Synthesizer):
@@ -140,7 +156,7 @@ class PrivSynSynthesizer(Synthesizer):
 
         total_rho = cdp_rho(args.epsilon, args.delta)
         preprocesser = data_preporcesser_common(args)
-        X_num_raw, X_cat_raw = _split_df(df, info)
+        X_num_raw, X_cat_raw = split_df_by_type(df, info)
 
         df_processed, domain_sizes, _ = preprocesser.load_data(
             X_num_raw,
@@ -151,6 +167,22 @@ class PrivSynSynthesizer(Synthesizer):
         )
 
         args_obj = add_default_params(args)
+
+        override_keys = (
+            "consist_iterations",
+            "non_negativity",
+            "append",
+            "sep_syn",
+            "initialize_method",
+            "update_method",
+            "update_rate_method",
+            "update_rate_initial",
+            "update_iterations",
+        )
+        for key in override_keys:
+            if key in extra_config:
+                setattr(args_obj, key, extra_config.pop(key))
+
         args_obj.extra = extra_config
         args_dict = vars(args_obj)
 

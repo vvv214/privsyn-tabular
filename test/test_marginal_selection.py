@@ -25,3 +25,15 @@ def test_two_way_marginal_selection_returns_pairs():
     assert len(pairs) > 0
     # Elements are tuples of attr names
     assert all(isinstance(t, tuple) for t in pairs)
+
+
+def test_two_way_marginal_selection_prefers_dependent_pairs():
+    df = pd.DataFrame({
+        'x': np.tile([0, 1], 100),
+        'y': np.tile([0, 1], 100),
+        'z': np.random.randint(0, 3, size=200),
+    })
+    domain = {'x': 2, 'y': 2, 'z': 3}
+    pairs = PrivSyn.two_way_marginal_selection(df, domain, rho_indif=0.0, rho_measure=0.1)
+
+    assert any(set(pair) == {'x', 'y'} for pair in pairs), "Dependent pair (x,y) should be selected"

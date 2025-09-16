@@ -54,8 +54,8 @@ def parameter_parser():
     parser.add_argument('--update_rate_initial', type=float, default=1.0)
     parser.add_argument('--num_synthesize_records', type=int, default=None)
     parser.add_argument('--update_iterations', type=int, default=50)
-    parser.add_argument('--num_prep', dtype=str, default='privtree')
-    parser.add_argument('--rare_threshold', dtype=float, default=0.005)
+    parser.add_argument('--num_prep', type=str, default='privtree')
+    parser.add_argument('--rare_threshold', type=float, default=0.005)
 
     return vars(parser.parse_args())
 

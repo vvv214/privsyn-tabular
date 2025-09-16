@@ -130,15 +130,23 @@ async def synthesize_data(
     if dataset_name == "debug_dataset":
         logger.info("Debug mode: Bypassing data inference and returning dummy metadata.")
         unique_id = str(uuid.uuid4())
+        temp_dir = os.path.join(tempfile.gettempdir(), unique_id)
+        os.makedirs(temp_dir, exist_ok=True)
+
+        dummy_df = pd.DataFrame(np.random.rand(10, 5))
+        df_path = os.path.join(temp_dir, "df.parquet")
+        dummy_df.to_parquet(df_path, index=False)
+
+        domain_stub = {
+            "num_col_1": {"type": "numerical", "size": 10},
+            "cat_col_1": {"type": "categorical", "size": 5},
+        }
+        info_stub = {"name": "debug_dataset"}
+
         inferred_data_temp_storage[unique_id] = {
-            "df": pd.DataFrame(np.random.rand(10, 5)), # Dummy DataFrame
-            "X_cat": np.array([["A", "B"], ["C", "D"]]), # Dummy X_cat
-            "X_num": np.array([[1.0, 2.0], [3.0, 4.0]]), # Dummy X_num
-            "domain_data": {
-                "num_col_1": {"type": "numerical", "size": 10},
-                "cat_col_1": {"type": "categorical", "size": 5}
-            }, # Dummy domain_data
-            "info_data": {"name": "debug_dataset"}, # Dummy info_data
+            "df_path": df_path,
+            "domain_data": domain_stub,
+            "info_data": info_stub,
             "target_column": target_column,
             "synthesis_params": {
                 "method": method,
@@ -157,16 +165,17 @@ async def synthesize_data(
                 "update_rate_method": update_rate_method,
                 "update_rate_initial": update_rate_initial,
                 "update_iterations": update_iterations,
-            }
+            },
+            "temp_dir": temp_dir,
         }
         logger.info(f"synthesize_data populated inferred_data_temp_storage with unique_id: {unique_id}, dataset_name: {dataset_name}")
-        logger.info(f"Domain data sent to frontend: {repr(inferred_data_temp_storage[unique_id]['domain_data'])}")
-        logger.info(f"Info data sent to frontend: {repr(inferred_data_temp_storage[unique_id]['info_data'])}")
+        logger.info(f"Domain data sent to frontend: {repr(domain_stub)}")
+        logger.info(f"Info data sent to frontend: {repr(info_stub)}")
         return JSONResponse(content={
             "message": "Metadata inferred. Please confirm.",
             "unique_id": unique_id,
-            "domain_data": inferred_data_temp_storage[unique_id]["domain_data"],
-            "info_data": inferred_data_temp_storage[unique_id]["info_data"]
+            "domain_data": domain_stub,
+            "info_data": info_stub
         })
 
     try:

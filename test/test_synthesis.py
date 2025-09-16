@@ -51,6 +51,7 @@ def test_gum_synthesis_pipeline():
     # 2. Simulate infer_data_metadata
     print("Simulating data inference...")
     target_column = 'income' # Assuming 'income' is the target column in adult.csv
+    feature_df = df_original.drop(columns=[target_column])
     inferred_data = infer_data_metadata(df_original.copy(), target_column=target_column)
     X_num_raw = inferred_data['X_num']
     X_cat_raw = inferred_data['X_cat']
@@ -134,6 +135,31 @@ def test_gum_synthesis_pipeline():
         assert synthesized_df.shape[1] == df_processed.shape[1], "Synthesized DataFrame column count mismatch."
         print(f"Synthesized DataFrame shape: {synthesized_df.shape}")
         print(f"Synthesized DataFrame min: {synthesized_df.min().min()}, max: {synthesized_df.max().max()}")
+
+        # Align column names for downstream comparisons
+        synthesized_df.columns = list(df_processed.columns)
+
+        age_meta = domain_data.get('age', {})
+        binning = (age_meta.get('binning') or {})
+        age_edges = binning.get('edges')
+        if age_edges is None:
+            age_edges = np.linspace(feature_df['age'].min(), feature_df['age'].max(), num=11)
+        synth_age = pd.to_numeric(synthesized_df['age'], errors='coerce')
+        synth_age = synth_age.fillna(synth_age.mean())
+        orig_hist, _ = np.histogram(feature_df['age'], bins=age_edges)
+        synth_hist, _ = np.histogram(synth_age, bins=age_edges)
+        orig_hist = orig_hist / orig_hist.sum()
+        synth_hist = synth_hist / synth_hist.sum()
+        age_tvd = 0.5 * np.abs(orig_hist - synth_hist).sum()
+        assert age_tvd < 0.35
+
+        # Compare categorical marginal for sex
+        if 'sex' in feature_df.columns and 'sex' in synthesized_df.columns:
+            original_sex = feature_df['sex'].value_counts(normalize=True)
+            synth_sex = synthesized_df['sex'].value_counts(normalize=True)
+            all_sex = set(original_sex.index) | set(synth_sex.index)
+            sex_tvd = 0.5 * sum(abs(original_sex.get(cat, 0.0) - synth_sex.get(cat, 0.0)) for cat in all_sex)
+            assert sex_tvd < 0.25
 
     except Exception as e:
         pytest.fail(f"Error during synthesis: {e}")

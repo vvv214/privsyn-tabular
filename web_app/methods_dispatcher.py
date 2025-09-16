@@ -35,6 +35,10 @@ def synthesize(
         delta=float(config.get("delta", 1e-5)),
     )
     extra_cfg = {k: v for k, v in config.items() if k not in ("epsilon", "delta")}
+    # Preserve the privacy parameters in the adapter config so methods like AIM
+    # that perform their own accounting receive the requested epsilon/delta.
+    extra_cfg.setdefault("epsilon", privacy.epsilon)
+    extra_cfg.setdefault("delta", privacy.delta)
     run_cfg = RunConfig(device=str(config.get("device", "cpu")), extra=extra_cfg)
 
     # Get synthesizer and fit/sample

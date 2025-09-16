@@ -48,7 +48,9 @@ class Dataset:
 
     def project(self, cols):
         """ project dataset onto a subset of columns """
-        if type(cols) in [str, int]:
+        if type(cols) == int:
+            cols = [self.domain.attrs[cols]]
+        elif type(cols) == str:
             cols = [cols]
 
         data = self.df.loc[:, cols]
