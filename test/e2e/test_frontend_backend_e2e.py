@@ -70,6 +70,17 @@ def test_end_to_end_frontend_backend(tmp_path):
                 # Wait for Metadata confirmation view
                 page.get_by_text("Confirm Inferred Metadata").wait_for(timeout=120_000)
 
+                # Ensure categorical values are detected for at least one column
+                gender_card = page.locator("div.card").filter(
+                    has=page.get_by_role("heading", name="gender")
+                )
+                gender_select = gender_card.locator("select")
+                gender_select.wait_for()
+                options = gender_select.locator("option")
+                assert options.count() > 0
+                option_texts = options.all_text_contents()
+                assert any("Female" in text or "Male" in text for text in option_texts)
+
                 # Confirm & synthesize
                 page.get_by_role("button", name="Confirm & Synthesize").click()
 
