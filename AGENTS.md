@@ -59,3 +59,10 @@ Notes:
 
 ## Scratch Artifacts
 - Do not add scratch or exploratory files to the repo. Convert valuable experiments into tests under `test/` or notebooks ignored by git. Place E2E flows under `test/e2e/`.
+
+## Current Context (2024-xx)
+- Metadata confirmation now supports per-column overrides (categorical value selection, numerical bounds/binning). Backend defers encoding until overrides are applied.
+- Evaluation (`/evaluate`) uses metadata-aware TVD: numerical columns leverage histogram bins (prefer domain-provided edges) while categorical columns retain exact TVD.
+- When a column without numeric values is forced to numeric, backend generates deterministic pseudo-random values within the provided bounds to avoid degenerate outputs; UI warns the user about the coercion.
+- Tests: `test/test_metadata_overrides.py`, `test/test_data_inference.py`, and `test/test_data_comparison.py` cover the new flows. Focused coverage command is documented in README.
+- Temporary run artifacts (`temp_synthesis_output/`, `temp_bench_runs/`) stay git-ignored; the helper scripts under `scripts/` run dev/prod servers, benches, and E2E.

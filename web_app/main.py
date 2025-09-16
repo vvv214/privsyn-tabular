@@ -393,13 +393,22 @@ async def confirm_synthesis(
             if max_bound is None:
                 max_bound = summary.get("max")
 
+            numeric_mask = ~col_series.isna()
             if min_bound is not None:
                 col_series = col_series.clip(lower=min_bound)
             if max_bound is not None:
                 col_series = col_series.clip(upper=max_bound)
 
-            fill_value = min_bound if min_bound is not None else 0
-            col_series = col_series.fillna(fill_value)
+            if not numeric_mask.any():
+                if min_bound is not None and max_bound is not None and min_bound <= max_bound:
+                    rng = np.random.default_rng(abs(hash((dataset_name, column))) & 0xFFFFFFFF)
+                    random_values = rng.uniform(min_bound, max_bound, len(processed_df))
+                    col_series = pd.Series(random_values, index=processed_df.index)
+                else:
+                    col_series = pd.Series(0.0, index=processed_df.index)
+            else:
+                fill_value = min_bound if min_bound is not None else 0
+                col_series = col_series.fillna(fill_value)
 
             edges, resolved_method, resolved_count = compute_bin_edges(col_series, min_bound, max_bound, config.get("binning"))
             if edges is not None:
@@ -485,6 +494,8 @@ async def confirm_synthesis(
             "delta": synthesis_params["delta"],
             "num_preprocess": synthesis_params["num_preprocess"],
             "rare_threshold": synthesis_params["rare_threshold"],
+            "domain_data": domain_data,
+            "info_data": info_data,
         }
         logger.info(f"Current data_storage keys: {data_storage.keys()}")
         log_memory_usage("confirm_synthesis_before_return")
@@ -544,7 +555,12 @@ async def evaluate_data_fidelity(
         # original_df is already available
         synthesized_df = pd.read_csv(synthesized_csv_path)
 
-        tvd_results = calculate_tvd_metrics(original_df, synthesized_df)
+        tvd_results = calculate_tvd_metrics(
+            original_df,
+            synthesized_df,
+            domain_data=data_info.get("domain_data"),
+            info_data=data_info.get("info_data"),
+        )
         results["tvd_metrics"] = tvd_results
         logger.info("TVD metrics calculated successfully.")
     except Exception as e:

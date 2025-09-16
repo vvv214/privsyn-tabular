@@ -287,4 +287,5 @@ def test_non_numeric_column_coerced_when_forced_to_numeric(monkeypatch):
     _confirm(client, confirm_form)
 
     original_df = data_storage["coerce"]["original_df"]
-    assert set(original_df["code"].astype(float)) == {0.0}
+    coerced_values = original_df["code"].astype(float)
+    assert len(set(coerced_values.round(5))) > 1
