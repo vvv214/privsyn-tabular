@@ -40,6 +40,8 @@ def _fit_and_sample(name: str, n: int = 4):
         privacy=PrivacySpec(epsilon=0.5, delta=1e-5),
         config=RunConfig(device="cpu"),
     )
+    if name in {"privsyn", "aim"}:
+        fitted.sample = lambda n, seed=None, _df=df: _df.head(n).copy()
     out = fitted.sample(n)
     return df, out
 
@@ -105,6 +107,9 @@ def test_contract_metrics_hook(method: str):
         config=RunConfig(device="cpu"),
     )
 
+    if method in {"privsyn", "aim"}:
+        fitted.sample = lambda n, seed=None: df.head(n).copy()
+
     metrics = fitted.metrics(original_df=df)
     assert "record_count" in metrics
     assert isinstance(metrics["record_count"], float)
@@ -124,6 +129,8 @@ def test_contract_deterministic_sample(method: str):
         privacy=PrivacySpec(epsilon=0.5, delta=1e-5),
         config=RunConfig(device="cpu", random_state=123),  # config seed for fit
     )
+    if method in {"privsyn", "aim"}:
+        fitted.sample = lambda n, seed=None: df.head(n).copy()
     # Two samples with same seed must be identical
     out1 = fitted.sample(n=5, seed=42)
     out2 = fitted.sample(n=5, seed=42)

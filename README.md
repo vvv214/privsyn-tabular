@@ -1,4 +1,4 @@
-# PrivSyn - Differentially Private Data Synthesis ![Coverage](https://codecov.io/gh/vvv214/privsyn-tabular/branch/main/graph/badge.svg)
+# PrivSyn - Differentially Private Data Synthesis ![Coverage](https://codecov.io/gh/vvv214/privsyn-tabular/branch/main/graph/badge.svg) ![CI](https://github.com/vvv214/privsyn-tabular/actions/workflows/ci.yml/badge.svg) ![License](https://img.shields.io/github/license/vvv214/privsyn-tabular) ![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue)
 
 This repository implements the PrivSyn algorithm for Differentially Private Data Synthesis, as described in the paper: [PrivSyn: Differentially Private Data Synthesis](https://www.usenix.org/system/files/sec21fall-zhang-zhikun.pdf).
 
