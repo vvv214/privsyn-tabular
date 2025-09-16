@@ -164,19 +164,24 @@ const CategoricalEditor = ({
         <label className="form-label">Unexpected value handling</label>
         <select className="form-select" value={strategy} onChange={handleStrategyChange}>
           <option value="map_to_special">Map excluded values to a special token</option>
-          <option value="keep_in_domain">Keep excluded values in the domain</option>
+          <option value="resample">Change to another in-domain value</option>
         </select>
-        {strategy === 'map_to_special' && (
-          <div className="mt-2">
-            <label className="form-label">Special token</label>
-            <input
-              type="text"
-              className="form-control"
-              value={specialToken}
-              onChange={handleSpecialTokenChange}
-              placeholder={SPECIAL_TOKEN_DEFAULT}
-            />
-            <div className="form-text">All excluded values will be replaced with this token before encoding.</div>
+       {strategy === 'map_to_special' && (
+         <div className="mt-2">
+           <label className="form-label">Special token</label>
+           <input
+             type="text"
+             className="form-control"
+             value={specialToken}
+             onChange={handleSpecialTokenChange}
+             placeholder={SPECIAL_TOKEN_DEFAULT}
+           />
+           <div className="form-text">All excluded values will be replaced with this token before encoding.</div>
+         </div>
+        )}
+        {strategy === 'resample' && (
+          <div className="mt-2 text-muted small">
+            Excluded values will be reassigned randomly to one of the selected categories before encoding.
           </div>
         )}
       </div>

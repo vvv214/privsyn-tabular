@@ -15,15 +15,24 @@ const MetadataConfirmation = ({ uniqueId, inferredDomainData, inferredInfoData, 
         const normalized = {};
         Object.entries(rawDomain || {}).forEach(([column, details]) => {
             if (details.type === 'categorical') {
-                const categories = Array.isArray(details.categories) ? [...details.categories] : [];
+                const fallbackCategories = Array.isArray(details.categories_preview)
+                    ? [...details.categories_preview]
+                    : Object.keys(details.value_counts || {});
+                const baseCategories = Array.isArray(details.categories) && details.categories.length > 0
+                    ? [...details.categories]
+                    : fallbackCategories;
+                const categories = baseCategories;
                 const selected = details.selected_categories ? [...details.selected_categories] : [...categories];
                 const custom = details.custom_categories ? [...details.custom_categories] : [];
+                const normalizedStrategy = details.excluded_strategy === 'keep_in_domain'
+                    ? 'resample'
+                    : details.excluded_strategy || 'map_to_special';
                 const normalizedEntry = {
                     ...details,
                     categories,
                     selected_categories: selected,
                     custom_categories: custom,
-                    excluded_strategy: details.excluded_strategy || 'map_to_special',
+                    excluded_strategy: normalizedStrategy,
                     special_token: details.special_token || SPECIAL_TOKEN_DEFAULT,
                     numeric_candidate_summary: details.numeric_candidate_summary || null,
                     nonNumericWarning: false,
@@ -84,7 +93,11 @@ const MetadataConfirmation = ({ uniqueId, inferredDomainData, inferredInfoData, 
             if (subKey === 'type') {
                 updatedEntry.type = value;
                 if (value === 'categorical') {
-                    const categories = Array.isArray(previousEntry.categories) ? previousEntry.categories : [];
+                    const categories = Array.isArray(previousEntry.categories) && previousEntry.categories.length > 0
+                        ? previousEntry.categories
+                        : (Array.isArray(previousEntry.categories_preview)
+                            ? previousEntry.categories_preview
+                            : Object.keys(previousEntry.value_counts || {}));
                     updatedEntry = {
                         ...updatedEntry,
                         categories,
@@ -178,8 +191,8 @@ const MetadataConfirmation = ({ uniqueId, inferredDomainData, inferredInfoData, 
                 const excluded = categoriesFromData.filter((cat) => !selected.includes(cat));
                 const specialToken = details.special_token || SPECIAL_TOKEN_DEFAULT;
                 let finalCategories;
-                if (details.excluded_strategy === 'keep_in_domain') {
-                    finalCategories = Array.from(new Set([...selected, ...custom, ...excluded]));
+                if (details.excluded_strategy === 'resample') {
+                    finalCategories = Array.from(new Set([...selected, ...custom]));
                 } else {
                     finalCategories = Array.from(new Set([...selected, ...custom, specialToken]));
                 }

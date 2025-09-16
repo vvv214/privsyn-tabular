@@ -66,3 +66,11 @@ Notes:
 - When a column without numeric values is forced to numeric, backend generates deterministic pseudo-random values within the provided bounds to avoid degenerate outputs; UI warns the user about the coercion.
 - Tests: `test/test_metadata_overrides.py`, `test/test_data_inference.py`, and `test/test_data_comparison.py` cover the new flows. Focused coverage command is documented in README.
 - Temporary run artifacts (`temp_synthesis_output/`, `temp_bench_runs/`) stay git-ignored; the helper scripts under `scripts/` run dev/prod servers, benches, and E2E.
+
+### 2025-09-16 Session Notes
+- CI now runs `pytest --cov=. --cov-report=xml` and uploads results via `codecov/codecov-action@v4`; coverage badge embedded in README.
+- Added deterministic unit suites for PrivSyn internals and discretizers:
+  - `test/test_privsyn_domain_utils.py`, `test/test_privsyn_update_config.py`, `test/test_privsyn_records_update.py`.
+  - `test/test_privtree.py`, `test/test_dawa.py`.
+  - Expanded backend override checks in `test/test_metadata_overrides.py` and path handling in `test/test_datastore.py`.
+- With these tests, coverage is ~77% overall; PrivSyn modules and preprocessors (PrivTree/DAWA) now exceed 80% coverage.

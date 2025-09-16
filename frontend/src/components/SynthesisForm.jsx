@@ -89,47 +89,38 @@ function SynthesisForm({
             <div className="form-text">Upload a CSV or Zip file, or load the sample "adult" dataset.</div>
           </div>
 
-          <div className="mt-3 p-4 bg-light rounded-3">
-            <h3 className="h6 mb-3">Advanced Parameters</h3>
-            <div className="row g-3">
+          <input type="hidden" name="num_preprocess" value={formData.num_preprocess} readOnly />
+
+          <div className="row mb-4">
+            <div className="col-md-6">
+              <label htmlFor="method" className="form-label">Method</label>
+              <select
+                className="form-select"
+                id="method"
+                name="method"
+                value={formData.method}
+                onChange={handleChange}
+                required
+              >
+                <option value="privsyn">PrivSyn</option>
+                <option value="aim">AIM</option>
+              </select>
+            </div>
+            {formData.method === 'privsyn' && (
               <div className="col-md-6">
-                <label htmlFor="method" className="form-label">Method</label>
-                <select
-                  className="form-select"
-                  id="method"
-                  name="method"
-                  value={formData.method}
+                <label htmlFor="update_iterations" className="form-label">Update Iterations</label>
+                <input
+                  type="number"
+                  className="form-control"
+                  id="update_iterations"
+                  name="update_iterations"
+                  value={formData.update_iterations}
                   onChange={handleChange}
                   required
-                >
-                  <option value="privsyn">PrivSyn</option>
-                  <option value="aim">AIM</option>
-                </select>
+                />
+                <div className="form-text">More iterations improve quality but are slower.</div>
               </div>
-              <div className="col-md-6">
-                <label className="form-label">Numerical Preprocessing</label>
-                <input type="hidden" name="num_preprocess" value={formData.num_preprocess} />
-                <div className="form-control-plaintext px-3 py-2 bg-light border rounded">
-                  Configure per-column binning after metadata inference.
-                </div>
-                <div className="form-text">We fall back to uniform bins if no overrides are supplied.</div>
-              </div>
-              {formData.method === 'privsyn' && (
-                <div className="col-md-6">
-                  <label htmlFor="update_iterations" className="form-label">Update Iterations</label>
-                  <input
-                    type="number"
-                    className="form-control"
-                    id="update_iterations"
-                    name="update_iterations"
-                    value={formData.update_iterations}
-                    onChange={handleChange}
-                    required
-                  />
-                  <div className="form-text">More iterations improve quality but are slower.</div>
-                </div>
-              )}
-            </div>
+            )}
           </div>
 
           <hr className="my-4" />

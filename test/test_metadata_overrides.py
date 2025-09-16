@@ -198,6 +198,213 @@ def test_metadata_override_round_trip(tmp_path, monkeypatch):
     if os.path.isdir(run_dir):
         shutil.rmtree(run_dir)
     data_storage.clear()
+
+
+@pytest.mark.slow
+def test_categorical_resample_strategy_persists_domain(monkeypatch):
+    data_storage.clear()
+    inferred_data_temp_storage.clear()
+    client = TestClient(app)
+    _fake_run_synthesis(monkeypatch)
+
+    df = pd.DataFrame(
+        {
+            "department": ["Sales", "Ops", "Sales", "HR"],
+            "tenure": [1, 3, 5, 2],
+        }
+    )
+
+    synth_form = _base_form_values(dataset_name="resample_dataset", n_sample=8)
+    payload = _post_synthesize(client, synth_form, df)
+    unique_id = payload["unique_id"]
+
+    inferred_domain = payload["domain_data"]
+    inferred_info = payload["info_data"]
+
+    categories_from_data = inferred_domain["department"].get("categories", [])
+    confirmed_domain = {
+        "department": {
+            "type": "categorical",
+            "categories_from_data": categories_from_data,
+            "selected_categories": ["Sales"],
+            "custom_categories": ["Remote"],
+            "excluded_categories": [c for c in categories_from_data if c != "Sales"],
+            "excluded_strategy": "resample",
+            "special_token": "__OTHER__",
+            "category_null_token": inferred_domain["department"].get("category_null_token"),
+            "value_counts": inferred_domain["department"].get("value_counts", {}),
+            "categories": list(
+                {"Sales", "Remote", *categories_from_data}
+            ),
+            "size": len({"Sales", "Remote", *categories_from_data}),
+        },
+        "tenure": inferred_domain["tenure"],
+    }
+
+    confirm_form = {**synth_form}
+    confirm_form.update(
+        {
+            "unique_id": unique_id,
+            "confirmed_domain_data": json.dumps(confirmed_domain),
+            "confirmed_info_data": json.dumps(inferred_info),
+        }
+    )
+
+    _confirm(client, confirm_form)
+
+    run_dir = os.path.join(backend_project_root, "temp_synthesis_output", "runs", unique_id)
+    with open(os.path.join(run_dir, "domain.json")) as fh:
+        persisted_domain = json.load(fh)
+
+    dept = persisted_domain["department"]
+    assert dept["excluded_strategy"] == "resample"
+    assert "__OTHER__" not in dept["categories"]
+    assert set(dept["categories"]) == set(confirmed_domain["department"]["categories"])
+
+    data_entry = data_storage["resample_dataset"]
+    original_df = data_entry["original_df"]
+    assert set(original_df["department"]) == set(df["department"])
+
+    if os.path.isdir(run_dir):
+        shutil.rmtree(run_dir)
+    data_storage.clear()
+    inferred_data_temp_storage.clear()
+
+
+@pytest.mark.slow
+def test_force_categorical_to_numeric_generates_range(monkeypatch):
+    data_storage.clear()
+    inferred_data_temp_storage.clear()
+    client = TestClient(app)
+    _fake_run_synthesis(monkeypatch)
+
+    df = pd.DataFrame(
+        {
+            "score_band": ["low", "medium", "high", "medium"],
+        }
+    )
+
+    synth_form = _base_form_values(dataset_name="numeric_override", n_sample=6)
+    payload = _post_synthesize(client, synth_form, df)
+    unique_id = payload["unique_id"]
+    inferred_domain = payload["domain_data"]
+    inferred_info = payload["info_data"]
+
+    confirmed_domain = {
+        "score_band": {
+            "type": "numerical",
+            "bounds": {"min": 0.0, "max": 100.0},
+            "binning": {
+                "method": "uniform",
+                "bin_count": 4,
+                "bin_width": None,
+                "growth_rate": None,
+                "dp_budget_fraction": 0.05,
+            },
+            "numeric_summary": inferred_domain["score_band"].get("numeric_summary"),
+            "numeric_candidate_summary": inferred_domain["score_band"].get("numeric_candidate_summary"),
+            "size": 4,
+        }
+    }
+
+    confirmed_info = {**inferred_info}
+    confirmed_info["num_columns"] = ["score_band"]
+    confirmed_info["cat_columns"] = []
+    confirmed_info["n_num_features"] = 1
+    confirmed_info["n_cat_features"] = 0
+
+    confirm_form = {**synth_form}
+    confirm_form.update(
+        {
+            "unique_id": unique_id,
+            "confirmed_domain_data": json.dumps(confirmed_domain),
+            "confirmed_info_data": json.dumps(confirmed_info),
+        }
+    )
+
+    _confirm(client, confirm_form)
+
+    run_dir = os.path.join(backend_project_root, "temp_synthesis_output", "runs", unique_id)
+    with open(os.path.join(run_dir, "domain.json")) as fh:
+        persisted_domain = json.load(fh)
+
+    score_meta = persisted_domain["score_band"]
+    assert score_meta["type"] == "numerical"
+    assert score_meta["bounds"] == {"min": 0.0, "max": 100.0}
+
+    synthetic_entry = data_storage["numeric_override"]
+    coerced_values = synthetic_entry["original_df"]["score_band"]
+    assert coerced_values.dtype.kind in {"f", "i"}
+    assert (coerced_values >= 0.0).all() and (coerced_values <= 100.0).all()
+    # Ensure coercion produced varied values rather than a constant array.
+    assert len(set(coerced_values.round(5))) > 1
+
+    if os.path.isdir(run_dir):
+        shutil.rmtree(run_dir)
+    data_storage.clear()
+    inferred_data_temp_storage.clear()
+
+
+@pytest.mark.slow
+def test_numerical_exponential_binning_edges_are_monotonic(monkeypatch):
+    data_storage.clear()
+    inferred_data_temp_storage.clear()
+    client = TestClient(app)
+    _fake_run_synthesis(monkeypatch)
+
+    df = pd.DataFrame(
+        {
+            "value": [5, 10, 15, 20, 25, 30],
+        }
+    )
+
+    synth_form = _base_form_values(dataset_name="exp_bins", n_sample=6)
+    payload = _post_synthesize(client, synth_form, df)
+    unique_id = payload["unique_id"]
+    inferred_domain = payload["domain_data"]
+    inferred_info = payload["info_data"]
+
+    confirmed_domain = {
+        "value": {
+            "type": "numerical",
+            "bounds": {"min": 0.0, "max": 40.0},
+            "binning": {
+                "method": "exponential",
+                "bin_count": 4,
+                "bin_width": None,
+                "growth_rate": 1.5,
+                "dp_budget_fraction": 0.05,
+            },
+            "numeric_summary": inferred_domain["value"].get("numeric_summary"),
+            "size": 4,
+        }
+    }
+
+    confirm_form = {**synth_form}
+    confirm_form.update(
+        {
+            "unique_id": unique_id,
+            "confirmed_domain_data": json.dumps(confirmed_domain),
+            "confirmed_info_data": json.dumps(inferred_info),
+        }
+    )
+
+    _confirm(client, confirm_form)
+
+    run_dir = os.path.join(backend_project_root, "temp_synthesis_output", "runs", unique_id)
+    with open(os.path.join(run_dir, "domain.json")) as fh:
+        persisted_domain = json.load(fh)
+
+    edges = persisted_domain["value"]["binning"]["edges"]
+    assert len(edges) == 5
+    assert edges[0] == pytest.approx(0.0)
+    assert edges[-1] == pytest.approx(40.0)
+    assert all(left < right for left, right in zip(edges, edges[1:]))
+    assert persisted_domain["value"]["binning"]["method"] == "exponential"
+
+    if os.path.isdir(run_dir):
+        shutil.rmtree(run_dir)
+    data_storage.clear()
     inferred_data_temp_storage.clear()
 
 
