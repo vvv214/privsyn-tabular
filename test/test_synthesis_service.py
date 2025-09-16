@@ -1,3 +1,4 @@
+import asyncio
 import os
 
 import numpy as np
@@ -7,8 +8,7 @@ import pytest
 from web_app.synthesis_service import Args, run_synthesis
 
 
-@pytest.mark.asyncio
-async def test_run_synthesis_forwards_advanced_config(monkeypatch, tmp_path):
+def test_run_synthesis_forwards_advanced_config(monkeypatch, tmp_path):
     captured = {}
 
     def _fake_dispatch(**kwargs):
@@ -51,14 +51,17 @@ async def test_run_synthesis_forwards_advanced_config(monkeypatch, tmp_path):
     x_num = np.array([[1.0], [2.0]])
     x_cat = np.array([["a"], ["b"]])
 
-    synth_path, _ = await run_synthesis(
-        args=args,
-        data_dir=str(tmp_path),
-        X_num_raw=x_num,
-        X_cat_raw=x_cat,
-        confirmed_domain_data=domain,
-        confirmed_info_data=info,
-    )
+    async def _exercise():
+        return await run_synthesis(
+            args=args,
+            data_dir=str(tmp_path),
+            X_num_raw=x_num,
+            X_cat_raw=x_cat,
+            confirmed_domain_data=domain,
+            confirmed_info_data=info,
+        )
+
+    synth_path, _ = asyncio.run(_exercise())
 
     assert captured["method"] == "privsyn"
     assert captured["n_sample"] == 2
