@@ -24,7 +24,9 @@ const CategoricalEditor = ({
   };
 
   const availableCategories = useMemo(() => {
-    const base = Array.isArray(categories) ? categories : [];
+    const base = Array.isArray(categories) && categories.length > 0
+      ? categories
+      : Object.keys(counts || {});
     const uniq = new Set(base);
     custom.forEach((val) => {
       if (val && !uniq.has(val)) {
