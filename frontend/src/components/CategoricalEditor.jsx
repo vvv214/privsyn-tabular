@@ -24,17 +24,34 @@ const CategoricalEditor = ({
   };
 
   const availableCategories = useMemo(() => {
-    const base = Array.isArray(categories) && categories.length > 0
-      ? categories
-      : Object.keys(counts || {});
-    const uniq = new Set(base);
-    custom.forEach((val) => {
-      if (val && !uniq.has(val)) {
-        uniq.add(val);
+    const uniq = new Set();
+
+    const addValues = (vals) => {
+      if (!Array.isArray(vals)) return;
+      vals.forEach((val) => {
+        if (val === undefined || val === null) return;
+        const strVal = String(val);
+        if (strVal.length === 0) return;
+        uniq.add(strVal);
+      });
+    };
+
+    addValues(categories);
+    addValues(domainDetails?.categories_preview);
+    addValues(domainDetails?.categories_from_data);
+    addValues(custom);
+    Object.keys(counts || {}).forEach((key) => {
+      if (key !== undefined && key !== null && String(key).length > 0) {
+        uniq.add(String(key));
       }
     });
+
+    if (uniq.size === 0) {
+      addValues(selected);
+    }
+
     return Array.from(uniq);
-  }, [categories, custom]);
+  }, [categories, custom, counts, domainDetails, selected]);
 
   const appliedSelected = useMemo(() => {
     const selectedSet = new Set(selected);
@@ -138,7 +155,7 @@ const CategoricalEditor = ({
             value={val}
             style={appliedSelected.includes(val) ? { backgroundColor: '#0d6efd', color: '#fff' } : undefined}
           >
-            {val} (count: {counts[val] ?? 0})
+            {val} (count: {counts?.[val] ?? counts?.[String(val)] ?? 0})
           </option>
         ))}
       </select>
