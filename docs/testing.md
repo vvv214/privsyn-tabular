@@ -40,6 +40,7 @@ E2E=1 pytest -q -k end_to_end
 - **Discretizers** (`test/test_privtree.py`, `test/test_dawa.py`): deterministic unit tests for PrivTree and DAWA helpers.
 - **API contracts** (`test/test_api*.py`): unified synthesizer interface, metrics hook, deterministic sampling semantics.
 - **End-to-end** (`test/e2e/test_frontend_backend_e2e.py`): upload sample → confirm metadata (category fallback + validation) → synthesize → download.
+- **Frontend components** (`frontend/src/components/*.test.jsx`): Vitest suites covering metadata confirmation, categorical editing, and numeric bound validation warnings.
 
 ## Local Tips
 

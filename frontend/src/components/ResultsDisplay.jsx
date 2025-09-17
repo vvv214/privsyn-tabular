@@ -6,17 +6,50 @@ function ResultsDisplay({
   synthesizedDataPreview,
   synthesizedDataHeaders,
   evaluationResults,
+  sessionId,
+  isEvaluating = false,
+  evaluationError = '',
+  onRetryEvaluate = () => {},
 }) {
   return (
     <section className="card mt-4">
       <div className="card-header">
-        <h2 className="h5 mb-0">Synthesis Results: {formData.dataset_name}</h2>
+        <div className="d-flex justify-content-between align-items-center">
+          <h2 className="h5 mb-0">Synthesis Results: {formData.dataset_name}</h2>
+          {sessionId && (
+            <span className="badge bg-light text-muted" title="Synthesis session identifier">
+              Session {sessionId.slice(0, 8)}…
+            </span>
+          )}
+        </div>
       </div>
       <div className="card-body">
-        <div className="text-center mb-4">
-          <a href={downloadUrl} download={`${formData.dataset_name}_synthesized.csv`} className="btn btn-success btn-lg">
-            Download Synthesized Data
+        <div className="text-center mb-4 d-flex flex-column gap-3 align-items-center">
+          <a
+            href={downloadUrl}
+            download={`${formData.dataset_name}_synthesized.csv`}
+            className="btn btn-success btn-lg"
+            aria-disabled={isEvaluating}
+          >
+            {isEvaluating ? 'Download (disabled during evaluation)' : 'Download Synthesized Data'}
           </a>
+          {evaluationError && (
+            <div className="alert alert-warning w-100 text-start" role="alert">
+              <p className="mb-2 fw-semibold">Evaluation warning</p>
+              <p className="mb-3">{evaluationError}</p>
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-secondary"
+                onClick={onRetryEvaluate}
+                disabled={isEvaluating}
+              >
+                {isEvaluating ? 'Re-evaluating…' : 'Retry evaluation'}
+              </button>
+            </div>
+          )}
+          {isEvaluating && !evaluationError && (
+            <div className="text-muted">Evaluating data fidelity…</div>
+          )}
         </div>
 
         <h3 className="h6 text-center mb-3">Synthesized Data Preview (First 10 Rows)</h3>

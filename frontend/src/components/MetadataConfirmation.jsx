@@ -4,7 +4,7 @@ import NumericalEditor from './NumericalEditor';
 
 const SPECIAL_TOKEN_DEFAULT = '__OTHER__';
 
-const MetadataConfirmation = ({ uniqueId, inferredDomainData, inferredInfoData, onConfirm, onCancel }) => {
+const MetadataConfirmation = ({ uniqueId, inferredDomainData, inferredInfoData, onConfirm, onCancel, isSubmitting = false }) => {
     const [domainData, setDomainData] = useState({});
     const [infoData, setInfoData] = useState(inferredInfoData);
     const [validationMessages, setValidationMessages] = useState([]);
@@ -356,6 +356,7 @@ const MetadataConfirmation = ({ uniqueId, inferredDomainData, inferredInfoData, 
                                                 </div>
                                                 {value.type === 'categorical' ? (
                                                     <CategoricalEditor
+                                                        columnKey={key}
                                                         domainDetails={value}
                                                         onChange={(updatedDetails) => {
                                                             setDomainData(prevDomain => ({
@@ -369,6 +370,7 @@ const MetadataConfirmation = ({ uniqueId, inferredDomainData, inferredInfoData, 
                                                     />
                                                 ) : (
                                                     <NumericalEditor
+                                                        columnKey={key}
                                                         domainDetails={value}
                                                         showNonNumericWarning={value.nonNumericWarning}
                                                         onChange={(updatedDetails) => {
@@ -392,7 +394,9 @@ const MetadataConfirmation = ({ uniqueId, inferredDomainData, inferredInfoData, 
 
                     <div className="d-flex justify-content-end mt-4">
                         <button type="button" className="btn btn-secondary me-2" onClick={onCancel}>Cancel</button>
-                        <button type="submit" className="btn btn-primary">Confirm & Synthesize</button>
+                        <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+                            {isSubmitting ? 'Submitting…' : 'Confirm & Synthesize'}
+                        </button>
                     </div>
                 </form>
             </div>

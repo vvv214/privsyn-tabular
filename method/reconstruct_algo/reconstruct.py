@@ -11,7 +11,7 @@ def reconstruct_to_original(
     """Decode an encoded dataframe back to original numeric/categorical spaces.
 
     - df_encoded: dataframe of integer-coded values (after synthesis)
-    - preprocesser: instance of preprocess_common.load_data_common.data_preporcesser_common
+    - preprocesser: instance of method.preprocess_common.load_data_common.data_preporcesser_common
                     already fitted during preprocessing
     - info: dict with 'num_columns' and 'cat_columns' listing original column names
     """
@@ -33,4 +33,3 @@ def reconstruct_to_original(
         out = df_encoded.copy()
         out.columns = num_cols + cat_cols
     return out
-

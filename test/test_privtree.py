@@ -2,7 +2,7 @@
 import numpy as np
 import pytest
 
-from preprocess_common import privtree
+from method.preprocess_common import privtree
 
 
 @pytest.fixture(autouse=True)
@@ -51,4 +51,3 @@ def test_calculate_param_positive():
     lam, delta = tree.calculate_param(0.7, 2)
     assert lam > 0
     assert delta > 0
-

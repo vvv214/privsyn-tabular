@@ -24,11 +24,12 @@ These steps mirror the Playwright E2E scenario in `test/e2e/test_frontend_backen
 | `MetadataConfirmation.jsx` | Top-level container for the confirmation card, orchestrates per-column editors and validation. | Tracks validation issues in state; any red banner you see is triggered here. |
 | `CategoricalEditor.jsx` | Lets users select/deselect categories, add custom values, and choose handling for excluded values. | Falls back to `value_counts`, `categories_preview`, etc., when the inferred list is empty, and blocks duplicate custom entries case-insensitively. |
 | `NumericalEditor.jsx` | Edits min/max bounds, binning strategies, and DP budget sliders. | Non-numeric warnings show when the column couldn’t be parsed numerically. |
-| `ResultsDisplay.jsx` | Presents the download button, preview table, and evaluation JSON block. | Grabs the CSV via `axios`, so ensure CORS is configured correctly on the backend. |
+| `ResultsDisplay.jsx` | Presents the download button, preview table, and evaluation JSON block. | Shows inline warnings when evaluation fails and lets the user retry; download link is disabled while evaluation is in flight. |
 
 ## Component Tests
 
 - `MetadataConfirmation.test.jsx` (Vitest) confirms that categorical lists render even when the backend only supplies `value_counts`, and it verifies the red alert banner blocks submission when categories are cleared or numeric bounds invert.
+- `NumericalEditor.test.jsx` (Vitest) exercises the per-bound validation warnings (e.g., extremely large magnitudes and bad numeric input).
 - Add further tests alongside their components in `frontend/src/components/`—Vitest picks up `*.test.jsx` files automatically.
 
 ## Manual Testing Checklist
@@ -36,6 +37,7 @@ These steps mirror the Playwright E2E scenario in `test/e2e/test_frontend_backen
 - Upload a well-formed CSV and confirm that the metadata table is populated.
 - Try an invalid CSV (e.g., mismatched columns) and ensure the form surfaces the error.
 - On the confirmation page, clear all categories for a column and assert the validation banner appears; fix the error and verify submission succeeds.
+- Enter an extremely large minimum/maximum (e.g., `1e12`) and verify the inline warning appears; try an invalid string to confirm it is rejected without updating the value.
 - Attempt to add a custom category whose value already exists (e.g., `female` vs `Female`) and confirm the inline warning appears.
 - Check number bounds (blank, non-numeric, max < min) all trigger errors.
 - Confirm the results page renders both the preview and the evaluation JSON.

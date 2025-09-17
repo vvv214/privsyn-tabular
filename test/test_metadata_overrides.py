@@ -14,7 +14,7 @@ if repo_root not in sys.path:
     sys.path.insert(0, repo_root)
 
 from web_app.main import app, data_storage, inferred_data_temp_storage, project_root as backend_project_root
-from preprocess_common.load_data_common import data_preporcesser_common
+from method.preprocess_common.load_data_common import data_preporcesser_common
 
 
 class Args:
@@ -75,7 +75,7 @@ def _post_synthesize(client: TestClient, form: dict, df: pd.DataFrame):
 def _confirm(client: TestClient, form: dict):
     response = client.post("/confirm_synthesis", data=form)
     assert response.status_code == 200, response.text
-    return response
+    return response.json()
 
 
 @pytest.mark.slow
@@ -153,10 +153,11 @@ def test_metadata_override_round_trip(tmp_path, monkeypatch):
         }
     )
 
-    _confirm(client, confirm_form)
+    confirm_payload = _confirm(client, confirm_form)
+    session_id = confirm_payload["session_id"]
 
-    assert "test_dataset" in data_storage
-    original_df = data_storage["test_dataset"]["original_df"]
+    assert session_id in data_storage
+    original_df = data_storage[session_id]["original_df"]
 
     assert original_df["age"].tolist() == [18.0, 65.0, 35.0]
     assert set(original_df["department"]) == {"A", special_token}
@@ -250,7 +251,8 @@ def test_categorical_resample_strategy_persists_domain(monkeypatch):
         }
     )
 
-    _confirm(client, confirm_form)
+    confirm_payload = _confirm(client, confirm_form)
+    session_id = confirm_payload["session_id"]
 
     run_dir = os.path.join(backend_project_root, "temp_synthesis_output", "runs", unique_id)
     with open(os.path.join(run_dir, "domain.json")) as fh:
@@ -261,7 +263,7 @@ def test_categorical_resample_strategy_persists_domain(monkeypatch):
     assert "__OTHER__" not in dept["categories"]
     assert set(dept["categories"]) == set(confirmed_domain["department"]["categories"])
 
-    data_entry = data_storage["resample_dataset"]
+    data_entry = data_storage[session_id]
     original_df = data_entry["original_df"]
     assert set(original_df["department"]) == set(df["department"])
 
@@ -322,7 +324,8 @@ def test_force_categorical_to_numeric_generates_range(monkeypatch):
         }
     )
 
-    _confirm(client, confirm_form)
+    confirm_payload = _confirm(client, confirm_form)
+    session_id = confirm_payload["session_id"]
 
     run_dir = os.path.join(backend_project_root, "temp_synthesis_output", "runs", unique_id)
     with open(os.path.join(run_dir, "domain.json")) as fh:
@@ -332,7 +335,7 @@ def test_force_categorical_to_numeric_generates_range(monkeypatch):
     assert score_meta["type"] == "numerical"
     assert score_meta["bounds"] == {"min": 0.0, "max": 100.0}
 
-    synthetic_entry = data_storage["numeric_override"]
+    synthetic_entry = data_storage[session_id]
     coerced_values = synthetic_entry["original_df"]["score_band"]
     assert coerced_values.dtype.kind in {"f", "i"}
     assert (coerced_values >= 0.0).all() and (coerced_values <= 100.0).all()
@@ -343,6 +346,71 @@ def test_force_categorical_to_numeric_generates_range(monkeypatch):
         shutil.rmtree(run_dir)
     data_storage.clear()
     inferred_data_temp_storage.clear()
+
+
+@pytest.mark.slow
+def test_custom_categories_deduplicate_case(monkeypatch):
+    data_storage.clear()
+    inferred_data_temp_storage.clear()
+    client = TestClient(app)
+    _fake_run_synthesis(monkeypatch)
+
+    df = pd.DataFrame(
+        {
+            "status": ["VIP", "vip", "Standard", "standard"],
+        }
+    )
+
+    synth_form = _base_form_values(dataset_name="case_normalize", n_sample=6)
+    payload = _post_synthesize(client, synth_form, df)
+    unique_id = payload["unique_id"]
+    domain = payload["domain_data"]
+    info = payload["info_data"]
+
+    status_config = domain["status"].copy()
+    status_config.update(
+        {
+            "selected_categories": ["VIP"],
+            "custom_categories": ["Premium", "premium"],
+            "excluded_categories": ["Standard"],
+            "excluded_strategy": "map_to_special",
+            "special_token": "__OTHER__",
+        }
+    )
+
+    confirmed_domain = {"status": status_config}
+    confirmed_info = {**info, "cat_columns": ["status"], "num_columns": [], "n_cat_features": 1, "n_num_features": 0}
+
+    confirm_form = {**synth_form}
+    confirm_form.update(
+        {
+            "unique_id": unique_id,
+            "confirmed_domain_data": json.dumps(confirmed_domain),
+            "confirmed_info_data": json.dumps(confirmed_info),
+        }
+    )
+
+    confirm_payload = _confirm(client, confirm_form)
+    session_id = confirm_payload["session_id"]
+    entry = data_storage[session_id]
+    status_meta = entry["domain_data"]["status"]
+
+    assert status_meta["custom_categories"] == ["Premium"]
+    assert status_meta["special_token"] == "__OTHER__"
+    assert status_meta["categories"].count("Premium") == 1
+    assert status_meta["categories"].count("VIP") == 1
+    assert "__OTHER__" in status_meta["categories"]
+
+    normalized_values = entry["original_df"]["status"].tolist()
+    assert normalized_values.count("VIP") == 2
+    assert normalized_values.count("__OTHER__") == 2
+
+    run_dir = os.path.join(backend_project_root, "temp_synthesis_output", "runs", unique_id)
+    if os.path.isdir(run_dir):
+        shutil.rmtree(run_dir)
+    data_storage.clear()
+    inferred_data_temp_storage.clear()
+
 
 
 @pytest.mark.slow
@@ -389,7 +457,8 @@ def test_numerical_exponential_binning_edges_are_monotonic(monkeypatch):
         }
     )
 
-    _confirm(client, confirm_form)
+    confirm_payload = _confirm(client, confirm_form)
+    session_id = confirm_payload["session_id"]
 
     run_dir = os.path.join(backend_project_root, "temp_synthesis_output", "runs", unique_id)
     with open(os.path.join(run_dir, "domain.json")) as fh:
@@ -425,7 +494,11 @@ def test_confirm_synthesis_missing_session():
 
     resp = client.post("/confirm_synthesis", data=form)
     assert resp.status_code == 404
-    assert "session" in resp.json()["detail"].lower()
+    detail = resp.json()["detail"]
+    if isinstance(detail, dict):
+        assert detail.get("error") in {"session_expired", "session_missing"}
+    else:
+        assert "session" in detail.lower()
 
 
 @pytest.mark.slow
@@ -491,8 +564,9 @@ def test_non_numeric_column_coerced_when_forced_to_numeric(monkeypatch):
             "confirmed_info_data": json.dumps(info_override),
         }
     )
-    _confirm(client, confirm_form)
+    confirm_payload = _confirm(client, confirm_form)
+    session_id = confirm_payload["session_id"]
 
-    original_df = data_storage["coerce"]["original_df"]
+    original_df = data_storage[session_id]["original_df"]
     coerced_values = original_df["code"].astype(float)
     assert len(set(coerced_values.round(5))) > 1

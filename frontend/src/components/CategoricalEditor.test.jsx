@@ -34,6 +34,7 @@ const renderEditor = (overrides = {}) => {
 
     return (
       <CategoricalEditor
+        columnKey="gender"
         domainDetails={details}
         onChange={handleChange}
       />

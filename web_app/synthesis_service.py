@@ -4,8 +4,6 @@ import pandas as pd
 import logging
 from typing import Dict, Any, Tuple, Callable, Optional
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -62,10 +60,9 @@ async def run_synthesis(
 
     logger.info(f"Starting synthesis with method: {args.method}, dataset: {args.dataset}, epsilon: {args.epsilon}")
 
-    # 2. Create temporary output directory for synthesis results
-    temp_output_dir = os.path.join(project_root, "temp_synthesis_output", dataset_name)
-    logger.info(f"Creating temporary output directory for synthesis results: {temp_output_dir}")
-    os.makedirs(temp_output_dir, exist_ok=True)
+    # 2. Ensure output directory for synthesis results exists
+    logger.info(f"Using synthesis output directory: {data_dir}")
+    os.makedirs(data_dir, exist_ok=True)
 
     # 3. Reconstruct original DataFrame (before preprocessing) from raw arrays and confirmed info
     num_cols = confirmed_info_data.get('num_columns', []) or []
@@ -123,7 +120,7 @@ async def run_synthesis(
     )
 
     # 5. Save synthesized CSV
-    synthesized_csv_path = os.path.join(temp_output_dir, f"{dataset_name}_synthesized.csv")
+    synthesized_csv_path = os.path.join(data_dir, f"{dataset_name}_synthesized.csv")
     synth_df.to_csv(synthesized_csv_path, index=False)
     logger.info(f"Synthesized data saved to: {synthesized_csv_path}")
 

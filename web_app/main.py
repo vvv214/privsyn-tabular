@@ -18,8 +18,8 @@ import sys
 
 import psutil # For memory monitoring
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+from .session_store import SessionStore
+
 logger = logging.getLogger(__name__)
 
 def log_memory_usage(stage: str):
@@ -28,6 +28,44 @@ def log_memory_usage(stage: str):
     # RSS (Resident Set Size) is the non-swapped physical memory a process has used.
     # VMS (Virtual Memory Size) is the total virtual memory used by the process.
     logger.info(f"Memory usage at {stage}: RSS={mem_info.rss / (1024 * 1024):.2f} MB, VMS={mem_info.vms / (1024 * 1024):.2f} MB")
+
+
+def _error_payload(error: str, message: str, hint: str | None = None) -> dict:
+    payload = {"error": error, "message": message}
+    if hint:
+        payload["hint"] = hint
+    return payload
+
+
+def _dedupe_preserve_order(values):
+    seen = set()
+    result = []
+    for val in values or []:
+        if val is None:
+            continue
+        key = canonicalize_category(val)
+        if key not in seen:
+            seen.add(key)
+            result.append(val)
+    return result
+
+
+def _canonical_set(values):
+    return {canonicalize_category(val) for val in values if val is not None}
+
+
+def _dedupe_with_lookup(values):
+    lookup = {}
+    ordered = []
+    for val in values or []:
+        if val is None:
+            continue
+        label = canonicalize_category(val)
+        key = label.casefold()
+        if key not in lookup:
+            lookup[key] = label
+            ordered.append(label)
+    return ordered, lookup
 
 
 
@@ -66,14 +104,12 @@ logger.info(f"CORS allow_origins configured for: {repr(allow_origins_list)}")
 # app.mount("/static", StaticFiles(directory="web_app/static"), name="static")
 
 # Store inferred data temporarily for confirmation flow
-# Key: unique_id, Value: {"df": pd.DataFrame, "domain_data": dict, "info_data": dict, "target_column": str}
-inferred_data_temp_storage = {}
+INFERRED_SESSION_TTL_SECONDS = 30 * 60  # 30 minutes
+SYNTHESIS_SESSION_TTL_SECONDS = 6 * 60 * 60  # 6 hours
 
-# Store paths to synthesized and original data for evaluation
-# In a real application, this would be a more robust storage solution (e.g., database, persistent storage)
-# For this example, we'll use a dictionary in memory.
-# Key: dataset_name, Value: {"synthesized_csv_path": "...", "original_data_dir": "..."}
-data_storage = {}
+# These stores behave like dictionaries but enforce TTL eviction.
+inferred_data_temp_storage = SessionStore(ttl_seconds=INFERRED_SESSION_TTL_SECONDS)
+data_storage = SessionStore(ttl_seconds=SYNTHESIS_SESSION_TTL_SECONDS)
 
 @app.get("/")
 async def read_root():
@@ -143,7 +179,7 @@ async def synthesize_data(
         }
         info_stub = {"name": "debug_dataset"}
 
-        inferred_data_temp_storage[unique_id] = {
+        inferred_data_temp_storage.set(unique_id, {
             "df_path": df_path,
             "domain_data": domain_stub,
             "info_data": info_stub,
@@ -167,7 +203,7 @@ async def synthesize_data(
                 "update_iterations": update_iterations,
             },
             "temp_dir": temp_dir,
-        }
+        })
         logger.info(f"synthesize_data populated inferred_data_temp_storage with unique_id: {unique_id}, dataset_name: {dataset_name}")
         logger.info(f"Domain data sent to frontend: {repr(domain_stub)}")
         logger.info(f"Info data sent to frontend: {repr(info_stub)}")
@@ -219,7 +255,7 @@ async def synthesize_data(
         df.to_parquet(df_path, index=False)
         logger.info(f"Saved df to {df_path}")
 
-        inferred_data_temp_storage[unique_id] = {
+        inferred_data_temp_storage.set(unique_id, {
             "df_path": df_path,
             "domain_data": inferred_data['domain_data'],
             "info_data": inferred_data['info_data'],
@@ -243,7 +279,7 @@ async def synthesize_data(
                 "update_iterations": update_iterations,
             },
             "temp_dir": temp_dir # Store the temporary directory path for cleanup
-        }
+        })
         logger.info(f"synthesize_data populated inferred_data_temp_storage with unique_id: {unique_id}, dataset_name: {dataset_name}")
         log_memory_usage("synthesize_data_before_return")
         return JSONResponse(content={
@@ -254,6 +290,9 @@ async def synthesize_data(
         })
     except HTTPException:
         raise
+    except ValueError as e:
+        logger.warning("Synthesis aborted due to invalid input: %s", e)
+        raise HTTPException(status_code=400, detail=_error_payload("invalid_request", str(e))) from e
     except Exception as e:
         logger.exception("Error during data inference or file processing.")
         raise HTTPException(status_code=500, detail=f"File processing or inference failed: {str(e)}")
@@ -288,7 +327,10 @@ async def confirm_synthesis(
     if unique_id not in inferred_data_temp_storage:
         raise HTTPException(status_code=404, detail="Inferred data not found or session expired. Please re-upload.")
 
-    temp_data = inferred_data_temp_storage.pop(unique_id) # Retrieve and remove from temp storage
+    try:
+        temp_data = inferred_data_temp_storage.pop(unique_id)  # Retrieve and remove from temp storage
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=_error_payload("session_expired", "Inferred data not found or session expired. Please re-upload.")) from exc
     df_path = temp_data["df_path"]
     temp_dir = temp_data["temp_dir"]
 
@@ -301,8 +343,25 @@ async def confirm_synthesis(
     synthesis_params = temp_data["synthesis_params"] # Retrieve synthesis parameters
 
     # Parse the JSON strings back into dictionaries
-    domain_data = json.loads(confirmed_domain_data)
-    info_data = json.loads(confirmed_info_data)
+    try:
+        domain_data = json.loads(confirmed_domain_data)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=_error_payload("invalid_json", "Unable to parse confirmed_domain_data.", hint=str(exc)),
+        ) from exc
+    if not isinstance(domain_data, dict):
+        raise HTTPException(status_code=400, detail=_error_payload("invalid_payload", "confirmed_domain_data must be a JSON object."))
+
+    try:
+        info_data = json.loads(confirmed_info_data)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=_error_payload("invalid_json", "Unable to parse confirmed_info_data.", hint=str(exc)),
+        ) from exc
+    if not isinstance(info_data, dict):
+        raise HTTPException(status_code=400, detail=_error_payload("invalid_payload", "confirmed_info_data must be a JSON object."))
 
     # Apply user overrides to the dataframe before encoding
     processed_df = df.copy()
@@ -352,11 +411,16 @@ async def confirm_synthesis(
         col_type = config.get("type")
         if col_type == "categorical":
             cat_col_names.append(column)
-            categories_from_data = config.get("categories_from_data", [])
-            selected_categories = config.get("selected_categories", categories_from_data)
-            custom_categories = config.get("custom_categories", [])
-            special_token = config.get("special_token") or "__OTHER__"
+            categories_from_data_raw = config.get("categories_from_data", [])
+            selected_raw = config.get("selected_categories", categories_from_data_raw)
+            custom_raw = config.get("custom_categories", [])
+            special_token = canonicalize_category(config.get("special_token") or "__OTHER__")
+            special_key = special_token.casefold()
             excluded_strategy = config.get("excluded_strategy", "map_to_special")
+
+            categories_from_data, data_lookup = _dedupe_with_lookup(categories_from_data_raw)
+            selected_categories, selected_lookup = _dedupe_with_lookup(selected_raw)
+            custom_categories, custom_lookup = _dedupe_with_lookup(custom_raw)
 
             if column in processed_df.columns:
                 canonical_series = processed_df[column].apply(canonicalize_category)
@@ -364,30 +428,52 @@ async def confirm_synthesis(
                 logger.warning(f"Column '{column}' missing from dataframe during categorical processing.")
                 canonical_series = pd.Series([], dtype=str)
 
-            excluded_categories = config.get("excluded_categories")
-            if excluded_categories is None:
-                excluded_categories = [cat for cat in categories_from_data if cat not in selected_categories]
+            selected_keys = {label.casefold() for label in selected_categories}
+            custom_keys = {label.casefold() for label in custom_categories}
 
-            selected_set = set(selected_categories + custom_categories)
-            excluded_set = set(excluded_categories)
+            excluded_raw = config.get("excluded_categories")
+            if excluded_raw is None:
+                excluded_raw = [cat for cat in categories_from_data_raw if canonicalize_category(cat).casefold() not in selected_keys]
+            excluded_categories, excluded_lookup = _dedupe_with_lookup(excluded_raw)
+            excluded_keys = {label.casefold() for label in excluded_categories}
+
+            label_lookup = {}
+            for lookup in (selected_lookup, custom_lookup, data_lookup, excluded_lookup):
+                for key, label in lookup.items():
+                    label_lookup.setdefault(key, label)
+            label_lookup.setdefault(special_key, special_token)
 
             if excluded_strategy == "map_to_special":
                 def map_value(value: str) -> str:
-                    if value in selected_set or value in custom_categories:
-                        return value
+                    key = value.casefold()
+                    if key in selected_keys or key in custom_keys:
+                        return label_lookup.get(key, value)
+                    if key in excluded_keys:
+                        return special_token
                     return special_token
 
                 canonical_series = canonical_series.apply(map_value)
-                final_categories = list({*selected_set, *custom_categories, special_token})
+                final_categories, _ = _dedupe_with_lookup(selected_categories + custom_categories + [special_token])
             else:
-                final_categories = list({*selected_set, *custom_categories, *excluded_set})
+                def map_value(value: str) -> str:
+                    key = value.casefold()
+                    return label_lookup.get(key, value)
 
-            if CATEGORY_NULL_TOKEN in canonical_series.values and CATEGORY_NULL_TOKEN not in final_categories:
-                final_categories.append(CATEGORY_NULL_TOKEN)
+                canonical_series = canonical_series.apply(map_value)
+                final_categories, _ = _dedupe_with_lookup(selected_categories + custom_categories + excluded_categories)
 
+            if CATEGORY_NULL_TOKEN in canonical_series.values:
+                null_key = CATEGORY_NULL_TOKEN.casefold()
+                if null_key not in {label.casefold() for label in final_categories}:
+                    final_categories.append(CATEGORY_NULL_TOKEN)
+
+            config["categories_from_data"] = categories_from_data
+            config["selected_categories"] = selected_categories
+            config["custom_categories"] = custom_categories
+            config["excluded_categories"] = excluded_categories
+            config["special_token"] = special_token
             config["categories"] = final_categories
             config["size"] = len(final_categories)
-            config["excluded_categories"] = list(excluded_set)
             processed_df[column] = canonical_series.astype(str)
         elif col_type == "numerical":
             num_col_names.append(column)
@@ -494,8 +580,9 @@ async def confirm_synthesis(
         )
 
         # Store data for evaluation
-        logger.info(f"Populating data_storage for dataset: {dataset_name}")
-        data_storage[dataset_name] = {
+        logger.info(f"Populating data_storage for session: {unique_id} ({dataset_name})")
+        data_storage.set(unique_id, {
+            "dataset_name": dataset_name,
             "synthesized_csv_path": synthesized_csv_path,
             "original_df": original_df, # Store original_df directly
             "method": synthesis_params["method"],
@@ -505,32 +592,42 @@ async def confirm_synthesis(
             "rare_threshold": synthesis_params["rare_threshold"],
             "domain_data": domain_data,
             "info_data": info_data,
-        }
+        })
         logger.info(f"Current data_storage keys: {data_storage.keys()}")
         log_memory_usage("confirm_synthesis_before_return")
 
-        return JSONResponse(content={"message": "Data synthesis initiated successfully!", "dataset_name": dataset_name})
+        return JSONResponse(content={
+            "message": "Data synthesis initiated successfully!",
+            "dataset_name": dataset_name,
+            "session_id": unique_id,
+        })
     except HTTPException:
         raise
     except Exception as e:
         logger.exception("Error during synthesis confirmation.")
-        raise HTTPException(status_code=500, detail=f"Synthesis failed: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=_error_payload("synthesis_failed", "Synthesis failed while generating synthetic data.", hint=str(e)),
+        )
     finally:
         if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
             logger.info(f"Cleaned up temporary directory: {temp_dir}")
 
-@app.get("/download_synthesized_data/{dataset_name}")
-async def download_synthesized_data(dataset_name: str):
+@app.get("/download_synthesized_data/{session_id}")
+async def download_synthesized_data(session_id: str):
     """
     Provides the synthesized data CSV for download.
     """
-    if dataset_name not in data_storage:
-        raise HTTPException(status_code=404, detail="Synthesized data not found for this dataset name.")
+    try:
+        session_payload = data_storage.get(session_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=_error_payload("session_missing", "Synthesized data not found for this session."))
 
-    synthesized_csv_path = data_storage[dataset_name]["synthesized_csv_path"]
+    synthesized_csv_path = session_payload["synthesized_csv_path"]
+    dataset_name = session_payload.get("dataset_name", "synthesized")
     if not os.path.exists(synthesized_csv_path):
-        raise HTTPException(status_code=404, detail="Synthesized data file not found on server.")
+        raise HTTPException(status_code=404, detail=_error_payload("missing_artifact", "Synthesized data file not found on server."))
 
     return StreamingResponse(
         io.FileIO(synthesized_csv_path, "rb"),
@@ -539,22 +636,20 @@ async def download_synthesized_data(dataset_name: str):
     )
 
 @app.post("/evaluate")
-async def evaluate_data_fidelity(
-    dataset_name: str = Form(...),
-):
+async def evaluate_data_fidelity(session_id: str = Form(...)):
     logger.debug(f"sys.path: {sys.path}")
     """
     Triggers evaluation of synthesized data fidelity using selected methods.
     """
-    if dataset_name not in data_storage:
-        raise HTTPException(status_code=404, detail="Synthesized data not found for this dataset name. Please synthesize first.")
-
-    data_info = data_storage[dataset_name]
+    try:
+        data_info = data_storage.get(session_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=_error_payload("session_missing", "Synthesized data not found for this session. Please synthesize first."))
     synthesized_csv_path = data_info["synthesized_csv_path"]
     original_df = data_info["original_df"] # Access original_df directly
 
     if not os.path.exists(synthesized_csv_path):
-        raise HTTPException(status_code=404, detail="Synthesized data file not found for evaluation.")
+        raise HTTPException(status_code=404, detail=_error_payload("missing_artifact", "Synthesized data file not found for evaluation."))
     # No need to check for original_data_dir existence anymore as original_df is in memory
 
     results = {}

@@ -2,7 +2,7 @@
 import numpy as np
 import pytest
 
-from preprocess_common import dawa
+from method.preprocess_common import dawa
 
 
 @pytest.fixture(autouse=True)

@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 const STRATEGY_OPTIONS = [
   { value: 'uniform', label: 'Uniform bins (equal width)' },
   { value: 'exponential', label: 'Exponential bins (growing width)' },
@@ -6,29 +8,79 @@ const STRATEGY_OPTIONS = [
 
 const defaultBudgetFraction = 0.05;
 
-const parseNumber = (value, fallback = undefined) => {
-  if (value === '' || value === null || value === undefined) return fallback;
+const toFiniteNumber = (value) => {
+  if (value === '' || value === null || value === undefined) return null;
   const parsed = Number(value);
-  return Number.isNaN(parsed) ? fallback : parsed;
+  return Number.isFinite(parsed) ? parsed : null;
 };
 
-const NumericalEditor = ({ domainDetails, onChange, showNonNumericWarning }) => {
+const NumericalEditor = ({ columnKey, domainDetails, onChange, showNonNumericWarning }) => {
   const bounds = domainDetails.bounds || {};
   const binning = domainDetails.binning || {};
+  const [boundFeedback, setBoundFeedback] = useState({ min: null, max: null });
+  const idBase = columnKey ? String(columnKey).replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase() : 'numeric';
+  const minInputId = `${idBase}-min`;
+  const maxInputId = `${idBase}-max`;
+  const minTestId = `numeric-min-${idBase}`;
+  const maxTestId = `numeric-max-${idBase}`;
 
-  const handleBoundsChange = (key, rawValue) => {
-    const nextValue = parseNumber(rawValue, rawValue === '' ? '' : 0);
+  const updateBoundFeedback = (key, payload) => {
+    setBoundFeedback((prev) => ({ ...prev, [key]: payload }));
+  };
+
+  const handleBoundsChange = (key, rawValue, isBadInput = false) => {
+    if (isBadInput) {
+      updateBoundFeedback(key, { level: 'error', text: 'Enter a finite number (e.g. 123 or 1.2e5).' });
+      return;
+    }
+    if (rawValue === '' || rawValue === null || rawValue === undefined) {
+      updateBoundFeedback(key, null);
+      onChange({
+        ...domainDetails,
+        bounds: {
+          ...bounds,
+          [key]: '',
+        },
+      });
+      return;
+    }
+
+    const trimmed = typeof rawValue === 'string' ? rawValue.trim() : rawValue;
+    const numericValue = Number(trimmed);
+
+    if (!Number.isFinite(numericValue)) {
+      updateBoundFeedback(key, { level: 'error', text: 'Enter a finite number (e.g. 123 or 1.2e5).' });
+      return;
+    }
+
+    if (Math.abs(numericValue) > 1e9) {
+      updateBoundFeedback(key, { level: 'warning', text: 'Value is extremely large; double-check the expected units.' });
+    } else {
+      updateBoundFeedback(key, null);
+    }
+
     onChange({
       ...domainDetails,
       bounds: {
         ...bounds,
-        [key]: nextValue,
+        [key]: numericValue,
       },
     });
   };
 
   const handleBinningChange = (key, rawValue) => {
-    const nextValue = key === 'method' ? rawValue : parseNumber(rawValue, rawValue === '' ? '' : 0);
+    let nextValue = rawValue;
+    if (key !== 'method') {
+      if (rawValue === '' || rawValue === null || rawValue === undefined) {
+        nextValue = '';
+      } else {
+        const parsed = Number(rawValue);
+        if (!Number.isFinite(parsed)) {
+          return;
+        }
+        nextValue = parsed;
+      }
+    }
     onChange({
       ...domainDetails,
       binning: {
@@ -39,7 +91,7 @@ const NumericalEditor = ({ domainDetails, onChange, showNonNumericWarning }) => 
   };
 
   const handleBudgetChange = (event) => {
-    const percent = parseNumber(event.target.value, 0);
+    const percent = toFiniteNumber(event.target.value) ?? 0;
     const fraction = Math.max(0, Math.min(100, percent)) / 100;
     handleBinningChange('dp_budget_fraction', fraction);
   };
@@ -47,11 +99,9 @@ const NumericalEditor = ({ domainDetails, onChange, showNonNumericWarning }) => 
   const budgetPercent = Math.round(100 * (binning.dp_budget_fraction ?? defaultBudgetFraction));
 
   let estimatedBinWidth = '';
-  if (typeof bounds.min === 'number' && typeof bounds.max === 'number' && parseNumber(binning.bin_count) && parseNumber(binning.bin_count) > 0) {
-    const count = parseNumber(binning.bin_count);
-    if (count > 0) {
-      estimatedBinWidth = (bounds.max - bounds.min) / count;
-    }
+  const binCount = toFiniteNumber(binning.bin_count);
+  if (typeof bounds.min === 'number' && typeof bounds.max === 'number' && binCount && binCount > 0) {
+    estimatedBinWidth = (bounds.max - bounds.min) / binCount;
   }
 
   return (
@@ -63,26 +113,40 @@ const NumericalEditor = ({ domainDetails, onChange, showNonNumericWarning }) => 
       )}
       <div className="row g-2">
         <div className="col-6">
-          <label className="form-label">Minimum</label>
+          <label className="form-label" htmlFor={minInputId}>Minimum</label>
           <input
             type="number"
             step="any"
             className="form-control"
             value={bounds.min ?? ''}
-            onChange={(e) => handleBoundsChange('min', e.target.value)}
+            onChange={(e) => handleBoundsChange('min', e.target.value, e.target.validity?.badInput)}
             placeholder={domainDetails.numeric_summary?.min ?? ''}
+            id={minInputId}
+            data-testid={minTestId}
           />
+          {boundFeedback.min && (
+            <div className={`small mt-1 ${boundFeedback.min.level === 'error' ? 'text-danger' : 'text-warning'}`}>
+              {boundFeedback.min.text}
+            </div>
+          )}
         </div>
         <div className="col-6">
-          <label className="form-label">Maximum</label>
+          <label className="form-label" htmlFor={maxInputId}>Maximum</label>
           <input
             type="number"
             step="any"
             className="form-control"
             value={bounds.max ?? ''}
-            onChange={(e) => handleBoundsChange('max', e.target.value)}
+            onChange={(e) => handleBoundsChange('max', e.target.value, e.target.validity?.badInput)}
             placeholder={domainDetails.numeric_summary?.max ?? ''}
+            id={maxInputId}
+            data-testid={maxTestId}
           />
+          {boundFeedback.max && (
+            <div className={`small mt-1 ${boundFeedback.max.level === 'error' ? 'text-danger' : 'text-warning'}`}>
+              {boundFeedback.max.text}
+            </div>
+          )}
         </div>
       </div>
       <div className="form-text">Values outside this range will be clipped before encoding.</div>

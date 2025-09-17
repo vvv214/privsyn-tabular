@@ -8,7 +8,7 @@ import pandas as pd
 from method.api.base import FittedSynth, PrivacySpec, RunConfig, Synthesizer
 from method.api.utils import enforce_dataframe_schema, split_df_by_type
 from method.privsyn.privsyn import PrivSyn, add_default_params
-from preprocess_common.load_data_common import data_preporcesser_common
+from method.preprocess_common.load_data_common import data_preporcesser_common
 from util.rho_cdp import cdp_rho
 
 logger = logging.getLogger(__name__)

@@ -5,12 +5,12 @@ import os
 import json
 import math
 import sklearn.preprocessing
-from preprocess_common.preprocess import * 
+from .preprocess import * 
 from util.rho_cdp import cdp_rho
 
 class data_preporcesser_common():
     def __init__(self, args):
-        self.logger = logging.getLogger("preprocess_common.load_data_common")
+        self.logger = logging.getLogger("method.preprocess_common.load_data_common")
         self.num_encoder = None
         self.cat_encoder = None
         self.num_col = 0

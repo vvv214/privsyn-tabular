@@ -4,7 +4,7 @@ import os
 import json
 import sklearn
 from functools import reduce
-from preprocess_common.preprocess import * 
+from method.preprocess_common.preprocess import * 
 
 import sklearn.preprocessing
 from method.AIM.mbi.Domain import Domain

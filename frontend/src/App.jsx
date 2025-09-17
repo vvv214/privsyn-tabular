@@ -37,6 +37,9 @@ function App() {
   const [synthesizedDataHeaders, setSynthesizedDataHeaders] = useState([]);
   const [evaluationResults, setEvaluationResults] = useState({});
   const [inferredUniqueId, setInferredUniqueId] = useState(null);
+  const [sessionId, setSessionId] = useState(null);
+  const [isEvaluating, setIsEvaluating] = useState(false);
+  const [evaluationError, setEvaluationError] = useState('');
   const [inferredDomainData, setInferredDomainData] = useState(null);
   const [inferredInfoData, setInferredInfoData] = useState(null);
 
@@ -134,6 +137,9 @@ function App() {
     setSynthesizedDataPreview([]);
     setSynthesizedDataHeaders([]);
     setEvaluationResults({});
+    setSessionId(null);
+    setEvaluationError('');
+    setIsEvaluating(false);
 
     const data = new FormData();
     Object.entries(formData).forEach(([key, value]) => data.append(key, value));
@@ -180,11 +186,15 @@ function App() {
       const response = await axios.post(`${API_URL}/confirm_synthesis`, data, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      const { message: msg, dataset_name: name } = response.data;
+      const { message: msg, dataset_name: name, session_id: newSessionId } = response.data;
       setMessage(msg);
-      setDownloadUrl(`${API_URL}/download_synthesized_data/${name}`);
+      setSessionId(newSessionId);
+      setEvaluationError('');
+      setIsEvaluating(false);
+      const downloadEndpoint = `${API_URL}/download_synthesized_data/${newSessionId}`;
+      setDownloadUrl(downloadEndpoint);
 
-      const csvResponse = await axios.get(`${API_URL}/download_synthesized_data/${name}`, { responseType: 'blob' });
+      const csvResponse = await axios.get(downloadEndpoint, { responseType: 'blob' });
       Papa.parse(csvResponse.data, {
         header: true,
         skipEmptyLines: true,
@@ -192,13 +202,16 @@ function App() {
           setSynthesizedDataHeaders(results.meta.fields || []);
           setSynthesizedDataPreview(results.data.slice(0, 10));
           setCurrentPage('result');
-          handleEvaluate();
+          handleEvaluate(newSessionId);
         },
         error: () => setError('Failed to parse synthesized data for preview.'),
       });
     } catch (err) {
       const detail = err.response?.data?.detail;
-      setError(typeof detail === 'string' ? detail : JSON.stringify(detail) || 'Failed to confirm metadata and synthesize data.');
+      const parsedDetail = typeof detail === 'string' ? detail : detail?.message || JSON.stringify(detail) || 'Failed to confirm metadata and synthesize data.';
+      setError(parsedDetail);
+      setEvaluationError(parsedDetail);
+      setIsEvaluating(false);
       setMessage('');
     } finally {
       setLoading(false);
@@ -209,26 +222,57 @@ function App() {
     setCurrentPage('form');
     setMessage('');
     setError('');
+    setSessionId(null);
+    setEvaluationError('');
+    setIsEvaluating(false);
   };
 
-  const handleEvaluate = async () => {
+  const parseErrorDetail = (detail) => {
+    if (typeof detail === 'string') {
+      return detail;
+    }
+    if (detail?.error && detail?.message) {
+      return `${detail.error}: ${detail.message}`;
+    }
+    if (detail?.message) {
+      return detail.message;
+    }
+    return JSON.stringify(detail) || 'An unknown error occurred.';
+  };
+
+  const handleEvaluate = async (overrideSessionId = sessionId) => {
     setMessage('Evaluating data fidelity...');
     setError('');
+    setEvaluationError('');
     setEvaluationResults({});
 
+    if (!overrideSessionId) {
+      const missingMsg = 'Missing synthesis session identifier. Please rerun the synthesis flow.';
+      setError(missingMsg);
+      setEvaluationError(missingMsg);
+      setMessage('');
+      return;
+    }
+
+    setIsEvaluating(true);
+
     const data = new FormData();
-    data.append('dataset_name', formData.dataset_name);
+    data.append('session_id', overrideSessionId);
 
     try {
       const response = await axios.post(`${API_URL}/evaluate`, data, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      setMessage(response.data.message);
-      setEvaluationResults(response.data.results);
+      setMessage(response.data.message || 'Evaluation complete.');
+      setEvaluationResults(response.data.results || {});
+      setEvaluationError('');
     } catch (err) {
-      const detail = err.response?.data?.detail;
-      setError(typeof detail === 'string' ? detail : JSON.stringify(detail) || 'Failed to run evaluations.');
+      const detail = parseErrorDetail(err.response?.data?.detail);
+      setError(detail);
+      setEvaluationError(detail);
       setMessage('');
+    } finally {
+      setIsEvaluating(false);
     }
   };
 
@@ -243,6 +287,7 @@ function App() {
             handleSubmit={handleSubmit}
             handleLoadSample={handleLoadSample}
             loadingSample={loadingSample}
+            isSubmitting={loading}
           />
         );
       case 'confirm_metadata':
@@ -254,6 +299,7 @@ function App() {
             synthesisParams={formData}
             onConfirm={handleConfirmMetadata}
             onCancel={handleCancelConfirmation}
+            isSubmitting={loading}
           />
         );
       case 'result':
@@ -264,6 +310,10 @@ function App() {
             synthesizedDataPreview={synthesizedDataPreview}
             synthesizedDataHeaders={synthesizedDataHeaders}
             evaluationResults={evaluationResults}
+            sessionId={sessionId}
+            isEvaluating={isEvaluating}
+            evaluationError={evaluationError}
+            onRetryEvaluate={() => handleEvaluate(sessionId)}
           />
         );
       default:

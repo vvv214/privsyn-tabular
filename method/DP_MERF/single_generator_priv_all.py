@@ -23,7 +23,7 @@ import json
 import math
 # %matplotlib inline
 
-from preprocess_common.preprocess import * 
+from method.preprocess_common.preprocess import * 
 from collections import Counter
 from sklearn.model_selection import ParameterGrid
 from autodp import privacy_calibrator

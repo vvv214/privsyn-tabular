@@ -2,7 +2,7 @@ import os, sys
 import numpy as np
 import pandas as pd
 
-from preprocess_common.load_data_common import data_preporcesser_common
+from method.preprocess_common.load_data_common import data_preporcesser_common
 
 
 class Args:
@@ -41,4 +41,3 @@ def test_reverse_data_categorical_only():
     x_num_rev, x_cat_rev = dp.reverse_data(df.values)
     assert x_num_rev is None
     assert x_cat_rev is not None
-

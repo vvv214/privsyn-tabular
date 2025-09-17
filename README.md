@@ -6,7 +6,7 @@
 
 - **Unified web app.** Upload a dataset, review inferred metadata, tweak categorical/numerical encodings, and download synthesized data in minutes.
 - **Two synthesis engines.** PrivSyn (rho-CDP, iterative marginal updates) and AIM (adaptive measurement selection) exposed behind the same API.
-- **Notebook-friendly modules.** Reusable preprocessing (PrivTree, DAWA), marginal selection, and synthesis utilities under `method/privsyn` and `preprocess_common`.
+- **Notebook-friendly modules.** Reusable preprocessing (PrivTree, DAWA), marginal selection, and synthesis utilities under `method/privsyn` and `method/preprocess_common`.
 - **Coverage-first test suite.** 100+ pytest cases plus Playwright E2E flows keep the UI/back-end contract in check.
 
 ## Quick Start
@@ -45,6 +45,7 @@ Visit `http://127.0.0.1:5174`. The frontend defaults to `http://127.0.0.1:8001` 
 2. Open the app and click **Load Sample** (loads `adult.csv.zip`).
 3. Confirm metadata (tweak domains if desired) and click **Confirm & Synthesize**.
 4. Download the resulting CSV or explore the preview table.
+5. Want a quick preview without running anything? Check `docs/sample_output/` for a tiny synthetic CSV and matching metrics JSON.
 
 ## Architecture Diagrams
 
@@ -98,7 +99,7 @@ Useful snippets:
 pytest -q test/test_metadata_overrides.py test/test_preprocessing.py test/test_data_inference.py
 
 # Strict warnings for core modules
-pytest -q -W error::DeprecationWarning -W error::FutureWarning -k "web_app or preprocess_common or method/privsyn"
+pytest -q -W error::DeprecationWarning -W error::FutureWarning -k "web_app or method/preprocess_common or method/privsyn"
 ```
 
 ## Repository Layout
@@ -109,7 +110,7 @@ pytest -q -W error::DeprecationWarning -W error::FutureWarning -k "web_app or pr
 | `web_app/` | FastAPI backend: metadata inference, synthesis orchestration, evaluation endpoints. |
 | `method/privsyn/` | Authoritative PrivSyn implementation (marginal selection, GUM synthesis, dataset helpers). |
 | `method/AIM/` | AIM (Adaptive & Iterative Mechanism) adapter + reference implementation. |
-| `preprocess_common/` | Shared discretizers (PrivTree, DAWA) and preprocessing pipelines. |
+| `method/preprocess_common/` | Shared discretizers (PrivTree, DAWA) and preprocessing pipelines. |
 | `test/` | Pytest suite; `test/e2e/` hosts Playwright end-to-end flows. |
 | `sample_data/` | Small datasets for local trials (`adult.csv.zip`, etc.). |
 | `scripts/` | Convenience scripts for booting servers, benchmarks, and E2E automation. |
@@ -129,8 +130,8 @@ Method adapters live in `method/AIM/adapter.py`; they map the unified interface 
 
 ### Preprocessing discretizers
 
-- **PrivTree (`preprocess_common/privtree.py`)** – recursive binary splits with Laplace noise and inverse transforms.
-- **DAWA (`preprocess_common/dawa.py`)** – L1 partitioning utilities used by AIM.
+- **PrivTree (`method/preprocess_common/privtree.py`)** – recursive binary splits with Laplace noise and inverse transforms.
+- **DAWA (`method/preprocess_common/dawa.py`)** – L1 partitioning utilities used by AIM.
 - Corresponding tests under `test/test_privtree.py` and `test/test_dawa.py` keep these helpers deterministic.
 
 ## Deployment Notes

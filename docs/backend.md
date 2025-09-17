@@ -5,8 +5,8 @@
 - **FastAPI application**: `web_app/main.py`
   - `/synthesize` infers metadata and caches the original DataFrame plus draft domain info.
   - `/confirm_synthesis` reconstructs the DataFrame with user overrides and invokes the synthesizer.
-  - `/download_synthesized_data/{dataset}` streams the generated CSV.
-  - `/evaluate` calculates metadata-aware metrics using `web_app/data_comparison.py`.
+  - `/download_synthesized_data/{session_id}` streams the generated CSV for a confirmed synthesis session.
+  - `/evaluate` calculates metadata-aware metrics using `web_app/data_comparison.py` (keyed by the same session ID).
 - **Synthesis service**: `web_app/synthesis_service.py`
   - Bridges the cached inference bundle to the selected synthesizer.
   - Handles preprocessing (clipping, binning, categorical remap) before handing off to PrivSyn or AIM.
@@ -20,7 +20,7 @@
 | `web_app/data_comparison.py` | Implements histogram-aware TVD and other metrics for evaluation. |
 | `method/privsyn/privsyn.py` | PrivSyn implementation (marginal selection + GUM). |
 | `method/AIM/adapter.py` | Adapter wiring AIM into the unified interface. |
-| `preprocess_common/` | Shared discretizers (PrivTree, DAWA) and helper utilities. |
+| `method/preprocess_common/` | Shared discretizers (PrivTree, DAWA) and helper utilities. |
 
 ## Endpoint Notes
 
@@ -34,12 +34,12 @@
 - Accepts JSON strings for `confirmed_domain_data` and `confirmed_info_data`.
 - Runs the chosen synthesizer (`privsyn` or `aim`) and writes synthesized CSV + evaluation bundle to the temp directory.
 
-### GET `/download_synthesized_data/{dataset}`
-- Streams the generated CSV.
-- Backed by the in-memory `data_storage` dictionary populated by the synthesis service.
+### GET `/download_synthesized_data/{session_id}`
+- Streams the generated CSV for a previously confirmed synthesis session.
+- Backed by an in-memory `SessionStore` keyed by the `unique_id` returned from `/synthesize`.
 
 ### POST `/evaluate`
-- Reuses cached original/synth data to compute metrics (e.g., histogram TVD for numeric columns).
+- Accepts `session_id` (form field) and reuses cached original/synth data to compute metrics (e.g., histogram TVD for numeric columns).
 
 ## Local Development
 

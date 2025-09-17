@@ -10,15 +10,15 @@ import pandas as pd
 import sklearn
 import sklearn.preprocessing
 from copy import deepcopy
-from preprocess_common.privtree import privtree
-from preprocess_common.dawa import dawa
+from .privtree import privtree
+from .dawa import dawa
 
 def laplace_noise(Lambda):
     return np.random.laplace(loc=0, scale=Lambda)
 
 class discretizer():
     def __init__(self, bins_method, rho, bin_number=100, ord = True):
-        self.logger = logging.getLogger("preprocess_common.discretizer")
+        self.logger = logging.getLogger("method.preprocess_common.discretizer")
         self.bins_method = bins_method
         self.rho = rho
         self.bin_number = bin_number
@@ -183,7 +183,7 @@ class discretizer():
 
 class rare_merger():
     def __init__(self, rho, output_type = 'ordinal', rare_threshold=0.002, unique_threshold=100, default_rare_encode_value = 'R'):
-        self.logger = logging.getLogger("preprocess_common.rare_merger")
+        self.logger = logging.getLogger("method.preprocess_common.rare_merger")
         self.rho = rho
         self.output_type = output_type
         self.unique_threshold = unique_threshold

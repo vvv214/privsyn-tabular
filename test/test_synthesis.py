@@ -13,9 +13,9 @@ import tempfile
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
 
-# Import modules from web_app and preprocess_common
+# Import modules from web_app and method/preprocess_common
 from web_app.data_inference import infer_data_metadata
-from preprocess_common.load_data_common import data_preporcesser_common
+from method.preprocess_common.load_data_common import data_preporcesser_common
 from method.privsyn.privsyn import privsyn_main
 from util.rho_cdp import cdp_rho
 

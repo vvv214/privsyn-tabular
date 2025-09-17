@@ -79,4 +79,4 @@ def test_full_flow_confirm_synthesis_small():
     out = r2.json()
     assert out["message"].lower().startswith("data synthesis initiated")
     assert out["dataset_name"] == "mini"
-
+    assert "session_id" in out

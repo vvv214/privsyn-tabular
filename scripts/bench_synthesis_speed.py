@@ -6,7 +6,7 @@ import argparse
 import pandas as pd
 
 from web_app.data_inference import infer_data_metadata
-from preprocess_common.load_data_common import data_preporcesser_common
+from method.preprocess_common.load_data_common import data_preporcesser_common
 from method.privsyn.privsyn import privsyn_main
 from util.rho_cdp import cdp_rho
 

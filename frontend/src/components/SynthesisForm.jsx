@@ -5,6 +5,7 @@ function SynthesisForm({
   handleSubmit,
   handleLoadSample,
   loadingSample,
+  isSubmitting = false,
 }) {
   return (
     <section className="card">
@@ -25,6 +26,7 @@ function SynthesisForm({
                 onChange={handleChange}
                 placeholder="e.g., my_dataset"
                 required
+                disabled={isSubmitting}
               />
             </div>
           </div>
@@ -41,6 +43,7 @@ function SynthesisForm({
                 value={formData.epsilon}
                 onChange={handleChange}
                 required
+                disabled={isSubmitting}
               />
             </div>
             <div className="col-md-4">
@@ -54,6 +57,7 @@ function SynthesisForm({
                 value={formData.delta}
                 onChange={handleChange}
                 required
+                disabled={isSubmitting}
               />
             </div>
             <div className="col-md-4">
@@ -66,6 +70,7 @@ function SynthesisForm({
                 value={formData.n_sample}
                 onChange={handleChange}
                 required
+                disabled={isSubmitting}
               />
             </div>
           </div>
@@ -81,8 +86,9 @@ function SynthesisForm({
                 onChange={handleFileChange}
                 accept=".csv,.zip"
                 required={!formData.dataset_name.includes('adult')}
+                disabled={isSubmitting}
               />
-              <button type="button" className="btn btn-outline-secondary" onClick={handleLoadSample} disabled={loadingSample}>
+              <button type="button" className="btn btn-outline-secondary" onClick={handleLoadSample} disabled={loadingSample || isSubmitting}>
                 {loadingSample ? 'Loading...' : 'Load Sample'}
               </button>
             </div>
@@ -101,6 +107,7 @@ function SynthesisForm({
                 value={formData.method}
                 onChange={handleChange}
                 required
+                disabled={isSubmitting}
               >
                 <option value="privsyn">PrivSyn</option>
                 <option value="aim">AIM</option>
@@ -117,6 +124,7 @@ function SynthesisForm({
                   value={formData.update_iterations}
                   onChange={handleChange}
                   required
+                  disabled={isSubmitting}
                 />
                 <div className="form-text">More iterations improve quality but are slower.</div>
               </div>
@@ -126,8 +134,8 @@ function SynthesisForm({
           <hr className="my-4" />
 
           <div className="d-grid">
-            <button type="submit" className="btn btn-primary btn-lg">
-              Infer Metadata & Synthesize
+            <button type="submit" className="btn btn-primary btn-lg" disabled={isSubmitting}>
+              {isSubmitting ? 'Inferring…' : 'Infer Metadata & Synthesize'}
             </button>
           </div>
         </form>

@@ -1,0 +1,11 @@
+{
+  "message": "Evaluation complete.",
+  "results": {
+    "tvd_metrics": {
+      "('age',)": 0.072,
+      "('income',)": 0.055,
+      "('gender',)": 0.018,
+      "('age', 'gender')": 0.104
+    }
+  }
+}

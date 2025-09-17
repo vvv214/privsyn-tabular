@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 const SPECIAL_TOKEN_DEFAULT = '__OTHER__';
 
 const CategoricalEditor = ({
+  columnKey,
   domainDetails,
   onChange,
 }) => {
@@ -18,6 +19,10 @@ const CategoricalEditor = ({
 
   const [newCategory, setNewCategory] = useState('');
   const [helperMessage, setHelperMessage] = useState(null);
+  const idBase = columnKey ? String(columnKey).replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase() : 'categorical';
+  const selectTestId = `categorical-select-${idBase}`;
+  const clearTestId = `categorical-clear-${idBase}`;
+  const selectAllTestId = `categorical-selectall-${idBase}`;
 
   const calculateSize = (selectedValues, customValues) => {
     const uniq = new Set([...(selectedValues || []), ...(customValues || [])]);
@@ -158,8 +163,22 @@ const CategoricalEditor = ({
     <div className="mt-3">
       <label className="form-label">Values detected ({availableCategories.length})</label>
       <div className="mb-2 d-flex gap-2 flex-wrap">
-        <button type="button" className="btn btn-sm btn-outline-primary" onClick={handleSelectAll}>Select all</button>
-        <button type="button" className="btn btn-sm btn-outline-secondary" onClick={handleClearAll}>Clear all</button>
+        <button
+          type="button"
+          className="btn btn-sm btn-outline-primary"
+          onClick={handleSelectAll}
+          data-testid={selectAllTestId}
+        >
+          Select all
+        </button>
+        <button
+          type="button"
+          className="btn btn-sm btn-outline-secondary"
+          onClick={handleClearAll}
+          data-testid={clearTestId}
+        >
+          Clear all
+        </button>
         {nullToken && appliedSelected.length !== availableCategories.length && (
           <span className="badge bg-light text-dark">Missing token will map to {nullToken}</span>
         )}
@@ -170,6 +189,7 @@ const CategoricalEditor = ({
         className="form-select"
         value={appliedSelected}
         onChange={handleSelectionChange}
+        data-testid={selectTestId}
       >
         {availableCategories.map((val) => (
           <option
