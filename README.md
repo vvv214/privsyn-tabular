@@ -2,13 +2,28 @@
 
 > End-to-end tooling for creating differentially private tabular datasets with PrivSyn and AIM.
 
-<p align="center">
-  <a href="docs/media/workflow.gif">
-    <img src="docs/media/workflow.gif" alt="PrivSyn workflow" width="720" />
-  </a>
-  <br />
-  <em>⬆️ Replace <code>docs/media/workflow.gif</code> with a screen recording of your favourite synthesis flow.</em>
-</p>
+<div align="center">
+  <table>
+    <tr>
+      <td align="center">
+        <img src="docs/media/sequence.svg" width="320" alt="End-to-end sequence" />
+        <br />
+        <sub>Upload → Confirm → Synthesize → Download</sub>
+      </td>
+      <td align="center">
+        <img src="docs/media/privsyn.svg" width="320" alt="PrivSyn pipeline" />
+        <br />
+        <sub>PrivSyn pipeline (inference, marginals, GUM)</sub>
+      </td>
+      <td align="center">
+        <img src="docs/media/aim.svg" width="320" alt="AIM workflow" />
+        <br />
+        <sub>AIM adaptive measurement loop</sub>
+      </td>
+    </tr>
+  </table>
+  <p><em>Screenshots live under <code>docs/media/</code>. Replace them with your own UI captures any time.</em></p>
+</div>
 
 ## Highlights
 
