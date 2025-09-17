@@ -2,44 +2,12 @@
 
 > End-to-end tooling for creating differentially private tabular datasets with PrivSyn and AIM.
 
-<div align="center">
-  <table>
-    <tr>
-      <td align="center">
-        <img src="docs/media/sequence.svg" width="320" alt="End-to-end sequence" />
-        <br />
-        <sub>Upload → Confirm → Synthesize → Download</sub>
-      </td>
-      <td align="center">
-        <img src="docs/media/privsyn.svg" width="320" alt="PrivSyn pipeline" />
-        <br />
-        <sub>PrivSyn pipeline (inference, marginals, GUM)</sub>
-      </td>
-      <td align="center">
-        <img src="docs/media/aim.svg" width="320" alt="AIM workflow" />
-        <br />
-        <sub>AIM adaptive measurement loop</sub>
-      </td>
-    </tr>
-  </table>
-  <p><em>Screenshots live under <code>docs/media/</code>. Replace them with your own UI captures any time.</em></p>
-</div>
-
 ## Highlights
 
 - **Unified web app.** Upload a dataset, review inferred metadata, tweak categorical/numerical encodings, and download synthesized data in minutes.
 - **Two synthesis engines.** PrivSyn (rho-CDP, iterative marginal updates) and AIM (adaptive measurement selection) exposed behind the same API.
 - **Notebook-friendly modules.** Reusable preprocessing (PrivTree, DAWA), marginal selection, and synthesis utilities under `method/privsyn` and `preprocess_common`.
 - **Coverage-first test suite.** 100+ pytest cases plus Playwright E2E flows keep the UI/back-end contract in check.
-
-## Demo Walkthrough
-
-1. **Upload** a CSV/ZIP or click “Load Sample” to stream `sample_data/adult.csv.zip`.
-2. **Confirm metadata** – review inferred types, adjust categorical domains, clip numerical ranges, choose binning strategies.
-3. **Run PrivSyn/AIM** – the backend preprocesses the data, generates a private synthetic dataset, and computes evaluation metrics.
-4. **Download & compare** – preview the synthesized sample in the UI or fetch the CSV via `/download_synthesized_data/<name>`.
-
-Record a GIF by following those four steps locally (e.g., `ffmpeg` or macOS screen recording) and save it as `docs/media/workflow.gif` to bring the above hero image to life.
 
 ## Quick Start
 
@@ -77,6 +45,34 @@ Visit `http://127.0.0.1:5174`. The frontend defaults to `http://127.0.0.1:8001` 
 2. Open the app and click **Load Sample** (loads `adult.csv.zip`).
 3. Confirm metadata (tweak domains if desired) and click **Confirm & Synthesize**.
 4. Download the resulting CSV or explore the preview table.
+
+## Architecture Diagrams
+
+<p><em>All diagrams live in <code>docs/media/</code>; replace or expand them to match your deployment.</em></p>
+
+### End-to-end sequence
+
+![Sequence](docs/media/sequence.svg)
+
+Shows how the user-facing frontend interacts with the FastAPI backend: upload → metadata inference → confirmation → synthesis → download.
+
+### PrivSyn pipeline
+
+![PrivSyn pipeline](docs/media/privsyn.svg)
+
+Highlights the preprocessing stage (metadata normalisation), the PrivSyn core (marginal selection + GUM), and post-processing steps (storage/evaluation).
+
+### AIM workflow
+
+![AIM workflow](docs/media/aim.svg)
+
+Summarises AIM’s adaptive measurement loop: initialise workload → iteratively measure queries with DP noise → update the model → generate synthetic data.
+
+### Request flow
+
+![Request flow](docs/media/flow.svg)
+
+Illustrates the main request/response boundaries between frontend, backend, synthesis engines, and temporary storage.
 
 ## Testing
 
