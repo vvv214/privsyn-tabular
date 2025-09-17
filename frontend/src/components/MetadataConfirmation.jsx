@@ -68,19 +68,18 @@ const MetadataConfirmation = ({ uniqueId, inferredDomainData, inferredInfoData, 
     useEffect(() => {
         const normalized = normalizeDomainData(inferredDomainData);
         setDomainData(normalized);
-        if (inferredInfoData) {
-            const numColumns = Object.entries(normalized).filter(([, entry]) => entry.type === 'numerical').map(([columnName]) => columnName);
-            const catColumns = Object.entries(normalized).filter(([, entry]) => entry.type === 'categorical').map(([columnName]) => columnName);
-            setInfoData({
-                ...inferredInfoData,
-                num_columns: numColumns,
-                cat_columns: catColumns,
-                n_num_features: numColumns.length,
-                n_cat_features: catColumns.length,
-            });
-        } else {
-            setInfoData(inferredInfoData);
-        }
+
+        const numColumns = Object.entries(normalized).filter(([, entry]) => entry.type === 'numerical').map(([columnName]) => columnName);
+        const catColumns = Object.entries(normalized).filter(([, entry]) => entry.type === 'categorical').map(([columnName]) => columnName);
+
+        setInfoData(prevInfoData => ({
+            ...prevInfoData,
+            ...inferredInfoData, // Apply incoming info data first
+            num_columns: numColumns,
+            cat_columns: catColumns,
+            n_num_features: numColumns.length,
+            n_cat_features: catColumns.length,
+        }));
     }, [inferredDomainData, inferredInfoData]);
 
     
