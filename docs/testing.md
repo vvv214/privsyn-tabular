@@ -5,6 +5,7 @@
 | Layer | Path | Description |
 |-------|------|-------------|
 | Unit / Integration | `test/test_*.py` | Covers API contracts, PrivSyn helpers, preprocessors, etc. |
+| Frontend unit | `frontend/src/**/*.test.jsx` | Vitest + React Testing Library exercises UI validation (e.g., `MetadataConfirmation`). |
 | End-to-End | `test/e2e/` | Playwright flows that boot both frontend and backend. |
 | Frontend lint | `frontend/eslint` | Run via `npm run lint`. |
 
@@ -20,6 +21,10 @@ pytest -q -m "not slow"
 
 # Full suite with coverage
 pytest --cov=. --cov-report=term
+
+# Frontend component tests
+cd frontend
+npm test -- --run
 
 # Run only API contract tests
 pytest -q test/test_api_contract.py

@@ -22,15 +22,21 @@ These steps mirror the Playwright E2E scenario in `test/e2e/test_frontend_backen
 |-----------|---------|-------|
 | `SynthesisForm.jsx` | Handles dataset name, epsilon/delta, method selection, and file upload. | Relies on PapaParse for CSV validation; errors bubble up via local state. |
 | `MetadataConfirmation.jsx` | Top-level container for the confirmation card, orchestrates per-column editors and validation. | Tracks validation issues in state; any red banner you see is triggered here. |
-| `CategoricalEditor.jsx` | Lets users select/deselect categories, add custom values, and choose handling for excluded values. | Falls back to `value_counts`, `categories_preview`, etc., when the inferred list is empty. |
+| `CategoricalEditor.jsx` | Lets users select/deselect categories, add custom values, and choose handling for excluded values. | Falls back to `value_counts`, `categories_preview`, etc., when the inferred list is empty, and blocks duplicate custom entries case-insensitively. |
 | `NumericalEditor.jsx` | Edits min/max bounds, binning strategies, and DP budget sliders. | Non-numeric warnings show when the column couldn’t be parsed numerically. |
 | `ResultsDisplay.jsx` | Presents the download button, preview table, and evaluation JSON block. | Grabs the CSV via `axios`, so ensure CORS is configured correctly on the backend. |
+
+## Component Tests
+
+- `MetadataConfirmation.test.jsx` (Vitest) confirms that categorical lists render even when the backend only supplies `value_counts`, and it verifies the red alert banner blocks submission when categories are cleared or numeric bounds invert.
+- Add further tests alongside their components in `frontend/src/components/`—Vitest picks up `*.test.jsx` files automatically.
 
 ## Manual Testing Checklist
 
 - Upload a well-formed CSV and confirm that the metadata table is populated.
 - Try an invalid CSV (e.g., mismatched columns) and ensure the form surfaces the error.
 - On the confirmation page, clear all categories for a column and assert the validation banner appears; fix the error and verify submission succeeds.
+- Attempt to add a custom category whose value already exists (e.g., `female` vs `Female`) and confirm the inline warning appears.
 - Check number bounds (blank, non-numeric, max < min) all trigger errors.
 - Confirm the results page renders both the preview and the evaluation JSON.
 

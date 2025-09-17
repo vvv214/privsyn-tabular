@@ -17,6 +17,7 @@ const CategoricalEditor = ({
   } = domainDetails;
 
   const [newCategory, setNewCategory] = useState('');
+  const [helperMessage, setHelperMessage] = useState(null);
 
   const calculateSize = (selectedValues, customValues) => {
     const uniq = new Set([...(selectedValues || []), ...(customValues || [])]);
@@ -68,9 +69,12 @@ const CategoricalEditor = ({
     return availableCategories.filter((val) => !selectedSet.has(val));
   }, [availableCategories, appliedSelected]);
 
+  const clearHelper = () => setHelperMessage(null);
+
   const handleSelectionChange = (event) => {
     const options = Array.from(event.target.selectedOptions || []);
     const updatedSelected = options.map((opt) => opt.value);
+    clearHelper();
     onChange({
       ...domainDetails,
       selected_categories: updatedSelected,
@@ -79,6 +83,7 @@ const CategoricalEditor = ({
   };
 
   const handleSelectAll = () => {
+    clearHelper();
     onChange({
       ...domainDetails,
       selected_categories: availableCategories,
@@ -87,6 +92,7 @@ const CategoricalEditor = ({
   };
 
   const handleClearAll = () => {
+    clearHelper();
     onChange({
       ...domainDetails,
       selected_categories: [],
@@ -96,7 +102,20 @@ const CategoricalEditor = ({
 
   const handleAddCategory = () => {
     const trimmed = newCategory.trim();
-    if (!trimmed) return;
+    if (!trimmed) {
+      setHelperMessage('Enter a non-empty value before adding.');
+      return;
+    }
+
+    const normalizedValue = trimmed.toLowerCase();
+    const normalizedExisting = new Set(availableCategories.map((val) => String(val).toLowerCase()));
+
+    if (normalizedExisting.has(normalizedValue)) {
+      setHelperMessage(`"${trimmed}" already exists in the category list.`);
+      setNewCategory('');
+      return;
+    }
+
     if (availableCategories.includes(trimmed)) {
       if (!appliedSelected.includes(trimmed)) {
         onChange({
@@ -114,10 +133,12 @@ const CategoricalEditor = ({
       selected_categories: [...appliedSelected, trimmed],
       size: calculateSize([...appliedSelected, trimmed], updatedCustom),
     });
+    setHelperMessage(null);
     setNewCategory('');
   };
 
   const handleStrategyChange = (event) => {
+    clearHelper();
     onChange({
       ...domainDetails,
       excluded_strategy: event.target.value,
@@ -126,6 +147,7 @@ const CategoricalEditor = ({
 
   const handleSpecialTokenChange = (event) => {
     const updatedToken = event.target.value;
+    clearHelper();
     onChange({
       ...domainDetails,
       special_token: updatedToken || SPECIAL_TOKEN_DEFAULT,
@@ -167,11 +189,20 @@ const CategoricalEditor = ({
           className="form-control"
           placeholder="Add new category"
           value={newCategory}
-          onChange={(e) => setNewCategory(e.target.value)}
+          onChange={(e) => {
+            setNewCategory(e.target.value);
+            setHelperMessage(null);
+          }}
         />
         <button type="button" className="btn btn-outline-success" onClick={handleAddCategory}>Add</button>
       </div>
       <div className="form-text">New values will be included in the domain even if they do not exist in the original data.</div>
+
+      {helperMessage && (
+        <div className="text-danger small mt-2" data-testid="category-helper-message">
+          {helperMessage}
+        </div>
+      )}
 
       {excludedValues.length > 0 && (
         <div className="alert alert-warning mt-3" role="alert">

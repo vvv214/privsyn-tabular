@@ -7,6 +7,7 @@ const SPECIAL_TOKEN_DEFAULT = '__OTHER__';
 const MetadataConfirmation = ({ uniqueId, inferredDomainData, inferredInfoData, onConfirm, onCancel }) => {
     const [domainData, setDomainData] = useState({});
     const [infoData, setInfoData] = useState(inferredInfoData);
+    const [validationMessages, setValidationMessages] = useState([]);
 
     const inferenceSettings = infoData?.inference_settings || {};
     const inferenceReport = infoData?.inference_report || {};
@@ -85,6 +86,7 @@ const MetadataConfirmation = ({ uniqueId, inferredDomainData, inferredInfoData, 
     
 
     const handleDomainChange = (key, subKey, value) => {
+        setValidationMessages([]);
         setDomainData(prev => {
             const previousEntry = prev[key] || {};
             let updatedEntry = { ...previousEntry };
@@ -178,6 +180,25 @@ const MetadataConfirmation = ({ uniqueId, inferredDomainData, inferredInfoData, 
         return asNumber;
     };
 
+    const validateDomainData = (domain) => {
+        const messages = [];
+        Object.entries(domain).forEach(([column, details]) => {
+            if (details.type === 'categorical') {
+                const selectedCount = (details.selected_categories?.length || 0) + (details.custom_categories?.length || 0);
+                if (selectedCount === 0) {
+                    messages.push(`Select at least one category for "${column}".`);
+                }
+            } else if (details.type === 'numerical') {
+                const min = sanitizeNumber(details.bounds?.min);
+                const max = sanitizeNumber(details.bounds?.max);
+                if (min !== null && max !== null && max < min) {
+                    messages.push(`Maximum must be greater than or equal to minimum for "${column}".`);
+                }
+            }
+        });
+        return messages;
+    };
+
     const buildConfirmedDomainData = () => {
         const serialized = {};
         Object.entries(domainData).forEach(([column, details]) => {
@@ -240,6 +261,13 @@ const MetadataConfirmation = ({ uniqueId, inferredDomainData, inferredInfoData, 
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        const messages = validateDomainData(domainData);
+        if (messages.length > 0) {
+            setValidationMessages(messages);
+            return;
+        }
+
+        setValidationMessages([]);
         const serializedDomain = buildConfirmedDomainData();
         const nextInfo = {
             ...infoData,
@@ -256,6 +284,16 @@ const MetadataConfirmation = ({ uniqueId, inferredDomainData, inferredInfoData, 
             </div>
             <div className="card-body">
                 <form onSubmit={handleSubmit}>
+                    {validationMessages.length > 0 && (
+                        <div className="alert alert-danger" role="alert" data-testid="metadata-validation-alert">
+                            <p className="mb-2 fw-bold">Please address the following issues:</p>
+                            <ul className="mb-0">
+                                {validationMessages.map((message, index) => (
+                                    <li key={`${message}-${index}`}>{message}</li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
                     <div className="card mb-4">
                         <div className="card-header">
                             <h4 className="mb-0">Dataset Information</h4>

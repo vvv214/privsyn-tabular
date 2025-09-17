@@ -83,6 +83,10 @@ pytest -q -m "not slow"
 # Full suite with coverage
 pytest --cov=. --cov-report=term
 
+# Frontend component tests
+cd frontend
+npm test -- --run
+
 # Browser E2E flows (requires Playwright browsers & frontend deps)
 E2E=1 pytest -q -k e2e
 ```

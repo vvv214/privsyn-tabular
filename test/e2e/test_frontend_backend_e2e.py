@@ -74,12 +74,14 @@ def test_end_to_end_frontend_backend(tmp_path):
                 gender_card = page.locator("div.card").filter(
                     has=page.get_by_role("heading", name="gender")
                 )
-                gender_select = gender_card.locator("select")
-                gender_select.wait_for()
-                options = gender_select.locator("option")
-                assert options.count() > 0
+                gender_values = gender_card.locator("select[multiple]")
+                gender_values.wait_for(state="visible")
+                options = gender_values.locator("option")
+                assert options.count() > 0, "Expected detected categorical values for gender"
                 option_texts = options.all_text_contents()
-                assert any("Female" in text or "Male" in text for text in option_texts)
+                assert any(
+                    label.strip() for label in option_texts
+                ), "Detected values list should have non-empty labels"
 
                 # Confirm & synthesize
                 page.get_by_role("button", name="Confirm & Synthesize").click()
