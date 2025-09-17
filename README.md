@@ -59,7 +59,7 @@ Shows how the user-facing frontend interacts with the FastAPI backend: upload �
 
 ### PrivSyn pipeline
 
-![PrivSyn pipeline](docs/media/privsyn.svg)
+<img src="docs/media/privsyn.svg" alt="PrivSyn pipeline" width="600" />
 
 Highlights the preprocessing stage (metadata normalisation), the PrivSyn core (marginal selection + GUM), and post-processing steps (storage/evaluation).
 
@@ -119,10 +119,10 @@ pytest -q -W error::DeprecationWarning -W error::FutureWarning -k "web_app or me
 
 ### PrivSyn pipeline
 
-1. **Inference** – `web_app/data_inference.py` classifies columns (numeric vs categorical), surfaces heuristics to the UI, and emits draft `domain.json` / `info.json`.
-2. **Confirmation** – user overrides (categories, special tokens, clipping, binning) are serialized and posted to `/confirm_synthesis`.
-3. **Synthesis** – `web_app/synthesis_service.py` reconstructs the dataframe, runs `method/privsyn/privsyn.py` (marginal selection + GUM), and stores artifacts for evaluation/download.
-4. **Evaluation** – `web_app/data_comparison.py` computes metadata-aware TVD metrics (histograms for numeric columns, exact values for categorical columns).
+- `web_app/data_inference.py` infers column metadata, builds draft `domain.json` / `info.json`, and returns it to the UI.
+- The frontend collects overrides and posts them back via `/confirm_synthesis`, shaping the inputs for synthesis.
+- `web_app/synthesis_service.py` rebuilds the dataframe, drives `method/privsyn/privsyn.py` (marginal selection + GUM), and stores run artifacts.
+- `web_app/data_comparison.py` evaluates outputs with metadata-aware TVD metrics and feeds results to the UI and APIs.
 
 ### AIM adapter
 
