@@ -6,17 +6,13 @@ const CategoricalEditor = ({
   domainDetails,
   onChange,
 }) => {
+  const [newCategory, setNewCategory] = useState('');
+
   const {
-    categories = [],
-    selected_categories: selected = [],
-    custom_categories: custom = [],
-    value_counts: counts = {},
     category_null_token: nullToken,
     excluded_strategy: strategy = 'map_to_special',
     special_token: specialToken = SPECIAL_TOKEN_DEFAULT,
   } = domainDetails;
-
-  const [newCategory, setNewCategory] = useState('');
 
   const calculateSize = (selectedValues, customValues) => {
     const uniq = new Set([...(selectedValues || []), ...(customValues || [])]);
@@ -24,6 +20,12 @@ const CategoricalEditor = ({
   };
 
   const availableCategories = useMemo(() => {
+    const {
+      categories = [],
+      custom_categories: custom = [],
+      value_counts: counts = {},
+      selected_categories: selected = [],
+    } = domainDetails;
     const uniq = new Set();
 
     const addValues = (vals) => {
@@ -51,9 +53,13 @@ const CategoricalEditor = ({
     }
 
     return Array.from(uniq);
-  }, [categories, custom, counts, domainDetails, selected]);
+  }, [domainDetails]);
 
   const appliedSelected = useMemo(() => {
+    const {
+      custom_categories: custom = [],
+      selected_categories: selected = [],
+    } = domainDetails;
     const selectedSet = new Set(selected);
     custom.forEach((val) => {
       if (!selectedSet.has(val)) {
@@ -61,7 +67,7 @@ const CategoricalEditor = ({
       }
     });
     return Array.from(selectedSet).filter((val) => availableCategories.includes(val));
-  }, [custom, selected, availableCategories]);
+  }, [domainDetails, availableCategories]);
 
   const excludedValues = useMemo(() => {
     const selectedSet = new Set(appliedSelected);
