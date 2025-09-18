@@ -139,7 +139,7 @@ const CategoricalEditor = ({
             const normalizedValue = String(val);
             const isCustom = custom.includes(normalizedValue);
             return (
-              <div
+              <span
                 key={normalizedValue}
                 className="badge bg-primary-subtle text-dark border border-primary-subtle d-inline-flex align-items-center gap-2"
                 style={{ padding: '0.45rem 0.75rem' }}
@@ -156,7 +156,7 @@ const CategoricalEditor = ({
                     ×
                   </button>
                 )}
-              </div>
+              </span>
             );
           })
         ) : (

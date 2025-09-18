@@ -4,6 +4,8 @@ import pytest
 
 from method.synthesis.privsyn.lib_dataset.domain import Domain
 from method.synthesis.privsyn.lib_synthesize.records_update import RecordUpdate
+from method.synthesis.privsyn.lib_synthesize.update_config import UpdateConfig
+from method.synthesis.privsyn.lib_synthesize.GUM import GUM_Mechanism
 
 
 class DummyMarginal:
@@ -108,3 +110,37 @@ def test_update_records_before_and_after_tracks_errors():
 
     updater.update_records_after(marg, ("x",), iteration=0)
     assert "0-after" in updater.error_tracker.columns
+
+
+def test_update_order_normalizes_string_labels():
+    domain = Domain(["a", "b"], [2, 2])
+    config = UpdateConfig(
+        domain,
+        num_records=4,
+        update_config={"alpha": 1.0, "alpha_update_method": "U8", "update_method": "S5", "threshold": 0.0},
+    )
+
+    class StubUpdate:
+        def __init__(self):
+            self.error_tracker = pd.DataFrame()
+
+        def update_records_before(self, marg, key, iteration, mute=False):
+            key_tuple = tuple(key) if not isinstance(key, tuple) else key
+            label = "::".join(key_tuple)
+            col = f"{iteration}-before"
+            self.error_tracker.loc[label, col] = 1.0
+
+    stub = StubUpdate()
+    config.update = stub
+
+    marginals = {("a", "b"): object()}
+    iterate_keys = [("a", "b")]
+
+    ordered = config.update_order(0, marginals, iterate_keys)
+    assert ordered == [("a", "b")]
+
+
+def test_normalize_key_handles_serialised_forms():
+    assert GUM_Mechanism._normalize_key("age") == ("age",)
+    assert GUM_Mechanism._normalize_key("education::occupation") == ("education", "occupation")
+    assert GUM_Mechanism._normalize_key(["x", "y"]) == ("x", "y")

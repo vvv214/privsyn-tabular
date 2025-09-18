@@ -94,17 +94,15 @@ class GUM_Mechanism():
         self.error_tracker = pd.DataFrame()
         
         # main procedure for synthesizing records
-        for key, value in self.iterate_keys.items():
-            try:
-                synthesizer = self._update_records(value)
-                cols = list(key) if isinstance(key, tuple) else [key]
-                available = [c for c in cols if c in temp_synthesized_df.columns and c in synthesizer.update.df.columns]
-                if available:
-                    temp_synthesized_df.loc[:, available] = synthesizer.update.df.loc[:, available]
-                if hasattr(synthesizer, 'update') and hasattr(synthesizer.update, 'error_tracker'):
-                    self.error_tracker = pd.concat([self.error_tracker, synthesizer.update.error_tracker])
-            except Exception as e:
-                self.logger.warning(f"Skip iterate key {key} due to error: {e}")
+        for key, marginal_keys in self.iterate_keys.items():
+            synthesizer = self._update_records(marginal_keys)
+            normalized_key = self._normalize_key(key)
+            cols = list(normalized_key)
+            available = [c for c in cols if c in temp_synthesized_df.columns and c in synthesizer.update.df.columns]
+            if available:
+                temp_synthesized_df.loc[:, available] = synthesizer.update.df.loc[:, available]
+            if hasattr(synthesizer, 'update') and hasattr(synthesizer.update, 'error_tracker'):
+                self.error_tracker = pd.concat([self.error_tracker, synthesizer.update.error_tracker])
 
         self.logger.info("updated data")
         self.synthesized_df = temp_synthesized_df.copy(deep=True)
@@ -129,7 +127,11 @@ class GUM_Mechanism():
             margs_iterate_key = synthesizer.update_order(update_iteration, self.marg_dict, margs_iterate_key)
 
             for index, key in enumerate(margs_iterate_key):
-                synthesizer.update_records(self.marg_dict[key], key, update_iteration)
+                normalized_key = self._normalize_key(key)
+                if normalized_key not in self.marg_dict:
+                    raise KeyError(f"Missing marginal entry for key {normalized_key}")
+                marg = self.marg_dict[normalized_key]
+                synthesizer.update_records(marg, normalized_key, update_iteration)
 
             if self.progress_report:
                 self.progress_report({
@@ -143,6 +145,19 @@ class GUM_Mechanism():
                 })
 
         return synthesizer
+
+    @staticmethod
+    def _normalize_key(key):
+        if isinstance(key, tuple):
+            return key
+        if isinstance(key, list):
+            return tuple(key)
+        if isinstance(key, str):
+            if "::" in key:
+                parts = tuple(part for part in key.split("::") if part)
+                return parts if parts else (key,)
+            return (key,)
+        return (key,)
 
 
     def project(self, cols):

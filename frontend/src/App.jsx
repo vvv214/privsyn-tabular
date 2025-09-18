@@ -39,7 +39,6 @@ function App() {
   const [inferredUniqueId, setInferredUniqueId] = useState(null);
   const [sessionId, setSessionId] = useState(null);
   const [isEvaluating, setIsEvaluating] = useState(false);
-  const [evaluationError, setEvaluationError] = useState('');
   const [inferredDomainData, setInferredDomainData] = useState(null);
   const [inferredInfoData, setInferredInfoData] = useState(null);
 
@@ -138,7 +137,6 @@ function App() {
     setSynthesizedDataHeaders([]);
     setEvaluationResults({});
     setSessionId(null);
-    setEvaluationError('');
     setIsEvaluating(false);
 
     const data = new FormData();
@@ -189,7 +187,6 @@ function App() {
       const { message: msg, dataset_name: name, session_id: newSessionId } = response.data;
       setMessage(msg);
       setSessionId(newSessionId);
-      setEvaluationError('');
       setIsEvaluating(false);
       const downloadEndpoint = `${API_URL}/download_synthesized_data/${newSessionId}`;
       setDownloadUrl(downloadEndpoint);
@@ -210,7 +207,6 @@ function App() {
       const detail = err.response?.data?.detail;
       const parsedDetail = typeof detail === 'string' ? detail : detail?.message || JSON.stringify(detail) || 'Failed to confirm metadata and synthesize data.';
       setError(parsedDetail);
-      setEvaluationError(parsedDetail);
       setIsEvaluating(false);
       setMessage('');
     } finally {
@@ -223,7 +219,6 @@ function App() {
     setMessage('');
     setError('');
     setSessionId(null);
-    setEvaluationError('');
     setIsEvaluating(false);
   };
 
@@ -243,13 +238,11 @@ function App() {
   const handleEvaluate = async (overrideSessionId = sessionId) => {
     setMessage('Evaluating data fidelity...');
     setError('');
-    setEvaluationError('');
     setEvaluationResults({});
 
     if (!overrideSessionId) {
       const missingMsg = 'Missing synthesis session identifier. Please rerun the synthesis flow.';
       setError(missingMsg);
-      setEvaluationError(missingMsg);
       setMessage('');
       return;
     }
@@ -265,11 +258,9 @@ function App() {
       });
       setMessage(response.data.message || 'Evaluation complete.');
       setEvaluationResults(response.data.results || {});
-      setEvaluationError('');
     } catch (err) {
       const detail = parseErrorDetail(err.response?.data?.detail);
       setError(detail);
-      setEvaluationError(detail);
       setMessage('');
     } finally {
       setIsEvaluating(false);
@@ -310,10 +301,7 @@ function App() {
             synthesizedDataPreview={synthesizedDataPreview}
             synthesizedDataHeaders={synthesizedDataHeaders}
             evaluationResults={evaluationResults}
-            sessionId={sessionId}
             isEvaluating={isEvaluating}
-            evaluationError={evaluationError}
-            onRetryEvaluate={() => handleEvaluate(sessionId)}
           />
         );
       default:

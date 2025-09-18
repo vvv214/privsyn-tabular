@@ -6,21 +6,13 @@ function ResultsDisplay({
   synthesizedDataPreview,
   synthesizedDataHeaders,
   evaluationResults,
-  sessionId,
   isEvaluating = false,
-  evaluationError = '',
-  onRetryEvaluate = () => {},
 }) {
   return (
     <section className="card mt-4">
       <div className="card-header">
         <div className="d-flex justify-content-between align-items-center">
           <h2 className="h5 mb-0">Synthesis Results: {formData.dataset_name}</h2>
-          {sessionId && (
-            <span className="badge bg-light text-muted" title="Synthesis session identifier">
-              Session {sessionId.slice(0, 8)}…
-            </span>
-          )}
         </div>
       </div>
       <div className="card-body">
@@ -35,21 +27,7 @@ function ResultsDisplay({
           >
             {isEvaluating ? 'Download (disabled during evaluation)' : 'Download Synthesized Data'}
           </a>
-          {evaluationError && (
-            <div className="alert alert-warning w-100 text-start" role="alert">
-              <p className="mb-2 fw-semibold">Evaluation warning</p>
-              <p className="mb-3">{evaluationError}</p>
-              <button
-                type="button"
-                className="btn btn-sm btn-outline-secondary"
-                onClick={onRetryEvaluate}
-                disabled={isEvaluating}
-              >
-                {isEvaluating ? 'Re-evaluating…' : 'Retry evaluation'}
-              </button>
-            </div>
-          )}
-          {isEvaluating && !evaluationError && (
+          {isEvaluating && (
             <div className="text-muted">Evaluating data fidelity…</div>
           )}
         </div>

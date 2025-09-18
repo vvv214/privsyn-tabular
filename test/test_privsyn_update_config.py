@@ -173,4 +173,4 @@ def test_update_order_sorts_descending():
         ("y",): DummyMarginal(score=5),
     }
     order = updater.update_order(0, marginals, list(marginals.keys()))
-    assert order == ["y", "x"]
+    assert order == [("y",), ("x",)]

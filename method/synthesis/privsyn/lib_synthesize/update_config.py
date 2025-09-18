@@ -90,7 +90,21 @@ class UpdateConfig:
 
         sort_error_tracker = self.update.error_tracker.sort_values(by="%s-before" % (iteration,), ascending=False)
 
-        return list(sort_error_tracker.index)
+        normalized_keys = []
+        for label in sort_error_tracker.index:
+            if isinstance(label, tuple):
+                normalized_keys.append(label)
+                continue
+            if isinstance(label, str):
+                parts = tuple(part for part in label.split("::") if part)
+                if not parts:
+                    continue
+                normalized_keys.append(parts)
+                continue
+            # Fallback: wrap unexpected labels so downstream code still receives an iterable of attributes
+            normalized_keys.append((label,))
+
+        return normalized_keys
 
     def update_records(self, original_marg, marg_key, iteration):
         marg = copy.deepcopy(original_marg)
@@ -126,4 +140,3 @@ class UpdateConfig:
             raise Exception("invalid update method")
 
         self.update.update_records_after(marg, marg_key, iteration, mute=True)
-

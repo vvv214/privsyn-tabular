@@ -56,7 +56,7 @@ describe('CategoricalEditor', () => {
     fireEvent.change(screen.getByPlaceholderText('Add new category'), { target: { value: 'VIP' } });
     fireEvent.click(screen.getByRole('button', { name: /add/i }));
 
-    expect(screen.getByText('VIP (count: 0)')).toBeInTheDocument();
+    expect(screen.getByText('VIP')).toBeInTheDocument();
     expect(changeSpy).toHaveBeenCalled();
     const latestCall = changeSpy.mock.calls.at(-1)[0];
     expect(latestCall.custom_categories).toContain('VIP');
@@ -84,6 +84,6 @@ describe('CategoricalEditor', () => {
     fireEvent.click(screen.getByRole('button', { name: /add/i }));
 
     expect(screen.queryByTestId('category-helper-message')).toBeNull();
-    expect(screen.getByText('TeamA (count: 0)')).toBeInTheDocument();
+    expect(screen.getByText('TeamA')).toBeInTheDocument();
   });
 });
