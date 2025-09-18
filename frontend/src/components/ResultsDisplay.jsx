@@ -30,6 +30,8 @@ function ResultsDisplay({
             download={`${formData.dataset_name}_synthesized.csv`}
             className="btn btn-success btn-lg"
             aria-disabled={isEvaluating}
+            aria-label="Download Synthesized Data"
+            data-testid="download-synth-link"
           >
             {isEvaluating ? 'Download (disabled during evaluation)' : 'Download Synthesized Data'}
           </a>

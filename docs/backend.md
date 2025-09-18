@@ -65,5 +65,6 @@ export VITE_API_BASE_URL=http://127.0.0.1:8001
 ## Configuration Tips
 
 - CORS origins are defined in `web_app/main.py`. Update the `allow_origins` list to include any new frontend domains.
+- Set the `ADDITIONAL_CORS_ORIGINS` environment variable (comma-separated list) in production to append extra origins—useful for Vercel preview/prod URLs.
 - Temporary artifacts (original data, synthesized CSVs) land under `temp_synthesis_output/`. Keep an eye on disk usage during iterative testing.
 - Use environmental overrides or `.env` files for production secrets (database URLs, etc.)—the current setup only handles the stateless demo flow.

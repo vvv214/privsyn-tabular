@@ -91,6 +91,13 @@ allow_origins_list = [
     "http://127.0.0.1:5174",
 ]
 
+additional_origins = os.getenv("ADDITIONAL_CORS_ORIGINS")
+if additional_origins:
+    for origin in additional_origins.split(","):
+        origin = origin.strip()
+        if origin and origin not in allow_origins_list:
+            allow_origins_list.append(origin)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allow_origins_list,

@@ -110,6 +110,7 @@ pytest -q -W error::DeprecationWarning -W error::FutureWarning -k "web_app or me
 - GitHub Actions now build MkDocs output on every push to `main` (see `.github/workflows/deploy-docs.yml`) and publish the result to the `gh-pages` branch.
 - On Vercel, create a second project that points to this repository’s `gh-pages` branch with output directory `.` (no build command required). The project URL will serve the docs directly.
 - Update `vercel.json`’s rewrite target (`https://<replace-with-docs-project>.vercel.app/`) once you know the docs project URL so your primary site proxies `/doc/*` to the generated documentation.
+- (Optional) Create a Vercel **Deploy Hook** for the docs project and store it as `VERCEL_DOCS_DEPLOY_HOOK_URL` in repository secrets; the GitHub Action will call it after pushing to `gh-pages` so Vercel redeploys automatically.
 - Local preview remains available with `mkdocs serve`.
 
 ## Repository Layout
@@ -149,6 +150,7 @@ Method adapters live in `method/synthesis/AIM/adapter.py`; they map the unified 
 
 - **Local:** `./scripts/start_backend.sh` / `./scripts/start_frontend.sh` mirror the commands above; pass `prod` to emit gunicorn builds or copy frontend assets.
 - **Cloud Run:** Build & deploy via Docker (see `gcloud builds submit …` example in the docs section). Remember to set `VITE_API_BASE_URL` in the frontend environment and extend `allow_origins` in `web_app/main.py` for any new domains.
+- **CORS:** Set the environment variable `ADDITIONAL_CORS_ORIGINS` (comma-separated) on your backend deployment to whitelist extra frontend domains such as the Vercel preview/prod URLs.
 - **Temp artifacts:** PrivSyn stores run products under the system temp dir by default. Set `PRIVSYN_DATA_ROOT` / `PRIVSYN_EXP_ROOT` if you need to redirect them (e.g., a workspace cache in CI).
 
 ## Contributing

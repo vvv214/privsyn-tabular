@@ -36,3 +36,14 @@ jobs:
           publish_dir: ./site
           publish_branch: gh-pages
           force_orphan: true
+
+      - name: Trigger Vercel deploy hook (optional)
+        if: ${{ env.VERCEL_DOCS_DEPLOY_HOOK_URL != '' }}
+        env:
+          HOOK: ${{ secrets.VERCEL_DOCS_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -n "$HOOK" ]; then
+            curl -X POST "$HOOK"
+          else
+            echo "Vercel deploy hook not configured; skipping"
+          fi
