@@ -1,0 +1,22 @@
+site_name: PrivSyn Tabular Docs
+site_description: Developer and operator guides for the PrivSyn tabular synthesiser
+site_url: https://privsyn-tabular-docs.vercel.app/
+repo_url: https://github.com/vvv214/privsyn-tabular
+repo_name: vvv214/privsyn-tabular
+nav:
+  - Overview: index.md
+  - Frontend: frontend.md
+  - Backend: backend.md
+  - Testing: testing.md
+  - Deployment: deployment.md
+  - Privacy: privacy.md
+  - Reference:
+      - Documentation Map: README.md
+theme:
+  name: mkdocs
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+extra_css: []
+extra_javascript: []

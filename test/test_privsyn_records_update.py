@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from method.privsyn.lib_dataset.domain import Domain
-from method.privsyn.lib_synthesize.records_update import RecordUpdate
+from method.synthesis.privsyn.lib_dataset.domain import Domain
+from method.synthesis.privsyn.lib_synthesize.records_update import RecordUpdate
 
 
 class DummyMarginal:

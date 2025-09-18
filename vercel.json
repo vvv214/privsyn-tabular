@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/doc/(.*)",
+      "destination": "https://privsyn-tabular-docs.vercel.app/$1"
+    }
+  ]
+}

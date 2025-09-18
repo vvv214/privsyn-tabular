@@ -4,8 +4,8 @@ import numpy as np
 import pytest
 import json
 
-from method.privsyn.lib_dataset.dataset import Dataset
-from method.privsyn.lib_dataset.domain import Domain
+from method.synthesis.privsyn.lib_dataset.dataset import Dataset
+from method.synthesis.privsyn.lib_dataset.domain import Domain
 
 
 def test_dataset_init_invalid_domain():

@@ -6,7 +6,7 @@ import json
 import math
 import sklearn.preprocessing
 from .preprocess import * 
-from util.rho_cdp import cdp_rho
+from method.util.rho_cdp import cdp_rho
 
 class data_preporcesser_common():
     def __init__(self, args):

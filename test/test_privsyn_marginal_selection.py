@@ -3,10 +3,10 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from method.privsyn.lib_dataset.dataset import Dataset
-from method.privsyn.lib_dataset.domain import Domain
-from method.privsyn.lib_marginal.marg_determine import marginal_selection, marginal_combine
-from method.privsyn.lib_marginal.marg_select_helper import calculate_indif, handle_isolated_attrs
+from method.synthesis.privsyn.lib_dataset.dataset import Dataset
+from method.synthesis.privsyn.lib_dataset.domain import Domain
+from method.synthesis.privsyn.lib_marginal.marg_determine import marginal_selection, marginal_combine
+from method.synthesis.privsyn.lib_marginal.marg_select_helper import calculate_indif, handle_isolated_attrs
 
 
 # Mock logger to prevent console output during tests

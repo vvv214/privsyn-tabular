@@ -1,7 +1,7 @@
 import argparse
 import pytest
 
-from method.privsyn.parameter_parser import str2bool, parameter_parser
+from method.synthesis.privsyn.parameter_parser import str2bool, parameter_parser
 
 
 def test_str2bool_true():

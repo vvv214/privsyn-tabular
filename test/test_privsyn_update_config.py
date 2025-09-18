@@ -2,7 +2,7 @@ import pandas as pd
 import pytest
 import math
 
-from method.privsyn.lib_synthesize import update_config as update_config_module
+from method.synthesis.privsyn.lib_synthesize import update_config as update_config_module
 
 
 class StubRecordUpdate:

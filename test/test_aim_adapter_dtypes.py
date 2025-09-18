@@ -8,8 +8,8 @@ sys.path.insert(0, project_root)
 
 
 def test_aim_adapter_numeric_dtypes():
-    from method.AIM import adapter as aim_adapter
-    from method.AIM.cdp2adp import cdp_rho
+    from method.synthesis.AIM import adapter as aim_adapter
+    from method.synthesis.AIM.cdp2adp import cdp_rho
 
     rng = np.random.default_rng(0)
     df = pd.DataFrame({

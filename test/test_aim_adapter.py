@@ -6,7 +6,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
 
 import pytest
-from method.AIM.cdp2adp import cdp_rho
+from method.synthesis.AIM.cdp2adp import cdp_rho
 
 
 def _build_simple_df(n=60):
@@ -36,7 +36,7 @@ def _build_simple_df(n=60):
 
 @pytest.mark.slow
 def test_aim_adapter_basic_synthesize():
-    from method.AIM import adapter as aim_adapter
+    from method.synthesis.AIM import adapter as aim_adapter
 
     df, domain_data, info_data = _build_simple_df(80)
 

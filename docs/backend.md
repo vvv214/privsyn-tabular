@@ -18,9 +18,21 @@
 | `web_app/data_inference.py` | Detect column types, normalise metadata, and prepare draft domain/info payloads. |
 | `web_app/synthesis_service.py` | Applies overrides, constructs the preprocesser, runs the synthesizer, and persists outputs. |
 | `web_app/data_comparison.py` | Implements histogram-aware TVD and other metrics for evaluation. |
-| `method/privsyn/privsyn.py` | PrivSyn implementation (marginal selection + GUM). |
-| `method/AIM/adapter.py` | Adapter wiring AIM into the unified interface. |
+| `method/synthesis/privsyn/privsyn.py` | PrivSyn implementation (marginal selection + GUM). |
+| `method/api/base.py` | Core synthesizer API (`SynthRegistry`, `PrivacySpec`, `RunConfig`, `Synthesizer` protocol). |
+| `method/api/utils.py` | Helper utilities used by adapters (e.g., `split_df_by_type`, schema enforcement). |
+| `method/synthesis/AIM/adapter.py` | Adapter wiring AIM into the unified interface provided by `method/api`. |
 | `method/preprocess_common/` | Shared discretizers (PrivTree, DAWA) and helper utilities. |
+
+### Unified Synthesis Interface
+
+`method/api/base.py` defines the shared contract every synthesis method must follow:
+
+- `SynthRegistry` exposes `register`, `get`, and `list` helpers so adapters (e.g., `method/synthesis/privsyn/__init__.py`, `method/synthesis/AIM/__init__.py`) can self-register at import time.
+- `PrivacySpec` and `RunConfig` capture the caller’s DP/compute requirements and are passed through to each adapter.
+- `_AdapterSynth` and `_AdapterFitted` wrap legacy prepare/run functions so existing method code needs minimal changes.
+
+The backend dispatcher (`web_app/methods_dispatcher.py`) and tests such as `test/test_methods_dispatcher.py` rely on this registry to treat every method uniformly. Method-specific modules (`method/synthesis/<name>/native.py`, `config.py`, `parameter_parser.py`, etc.) stay alongside each algorithm because they encode behaviour that other methods do not share (e.g., PrivSyn’s marginal-selection parameters or AIM’s workload configuration). Keep the registry small and general, and let each method own its internal configuration files.
 
 ## Endpoint Notes
 

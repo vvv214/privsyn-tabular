@@ -4,7 +4,7 @@ import os, sys
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
 
-from method.privsyn.lib_dataset.domain import Domain
+from method.synthesis.privsyn.lib_dataset.domain import Domain
 
 
 def test_domain_project_marginalize_merge():

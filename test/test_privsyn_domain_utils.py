@@ -1,4 +1,4 @@
-from method.privsyn.lib_dataset.domain import Domain
+from method.synthesis.privsyn.lib_dataset.domain import Domain
 
 
 def test_domain_core_operations():

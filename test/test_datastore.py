@@ -8,8 +8,8 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from method.privsyn import config
-from method.privsyn.lib_dataset.data_store import DataStore
+from method.synthesis.privsyn import config
+from method.synthesis.privsyn.lib_dataset.data_store import DataStore
 
 
 def _build_args():

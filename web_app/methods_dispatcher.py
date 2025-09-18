@@ -11,8 +11,8 @@ logger = logging.getLogger(__name__)
 
 # Ensure adapters are imported so they self-register with the registry
 try:  # pragma: no cover - import-time side effect
-    from method.privsyn import adapter as _privsyn_adapter  # noqa: F401
-    from method.AIM import adapter as _aim_adapter  # noqa: F401
+    from method.synthesis.privsyn import adapter as _privsyn_adapter  # noqa: F401
+    from method.synthesis.AIM import adapter as _aim_adapter  # noqa: F401
 except Exception:  # pragma: no cover - non-fatal
     pass
 

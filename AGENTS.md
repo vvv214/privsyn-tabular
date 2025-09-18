@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- Core synthesis methods live under `method/` (`privsyn/`, `AIM/`) with adapters exposing consistent `prepare`/`run` hooks.
+- Core synthesis methods now live under `method/synthesis/` (e.g., `privsyn/`, `AIM/`) with adapters exposing consistent `prepare`/`run` hooks.
 - Backend FastAPI service sits in `web_app/` (entrypoint `web_app/main.py`, dispatcher `methods_dispatcher.py`).
 - React UI is in `frontend/` with Vite tooling; static builds copy into `web_app/static/`.
 - Shared preprocessing utilities are under `method/preprocess_common/`; reconstruction helpers in `method/reconstruct_algo/`.
@@ -22,7 +22,7 @@
 ## Testing Guidelines
 - Use `pytest` with deterministic seeds where possible; E2E flows live in `test/e2e/` and are marked `e2e`.
 - New features should extend coverage-aligned suites (e.g., `test/test_metadata_overrides.py`, `test/test_privsyn_domain_utils.py`).
-- Run `pytest -q -W error::DeprecationWarning -W error::FutureWarning -k "web_app or method/preprocess_common or method/privsyn"` to enforce strict warning handling on core modules.
+- Run `pytest -q -W error::DeprecationWarning -W error::FutureWarning -k "web_app or method/preprocess_common or method/synthesis/privsyn"` to enforce strict warning handling on core modules.
 
 ## Commit & Pull Request Guidelines
 - Follow Conventional Commits (`feat:`, `fix:`, `chore(scope):`, etc.).
@@ -32,3 +32,4 @@
 ## Security & Configuration Tips
 - Configure API base URL via `VITE_API_BASE_URL`; adjust backend CORS origins in `web_app/main.py` for new domains.
 - Keep temporary synthesis outputs in git-ignored `temp_synthesis_output/` and avoid adding large private datasets.
+- PrivSyn temp artifacts default to the system temp dir; override via `PRIVSYN_DATA_ROOT` / `PRIVSYN_EXP_ROOT` when automation needs deterministic paths.

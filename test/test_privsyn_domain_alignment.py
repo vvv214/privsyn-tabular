@@ -5,7 +5,7 @@ import pandas as pd
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
 
-from method.privsyn.privsyn import PrivSyn
+from method.synthesis.privsyn.privsyn import PrivSyn
 
 
 def test_two_way_marginal_selection_domain_alignment():

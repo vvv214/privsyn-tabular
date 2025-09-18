@@ -4,7 +4,7 @@ PrivSyn supports two synthesis engines—PrivSyn (rho-CDP) and AIM (approximate 
 
 ## 1. PrivSyn
 
-- **Interface**: the API accepts an `epsilon`/`delta` pair. Internally the PrivSyn library converts these to a rho-zCDP budget using `util.rho_cdp.py`.
+- **Interface**: the API accepts an `epsilon`/`delta` pair. Internally the PrivSyn library converts these to a rho-zCDP budget using `method/util/rho_cdp.py`.
 - **Iterations**: the number of update iterations (`update_iterations`) and consistency passes (`consist_iterations`) consume the same global budget. Reducing them lowers overall runtime and the amount of per-marginal noise but also reduces fidelity.
 - **Preprocessing**: discretisation (e.g. PrivTree binning) can optionally draw a portion of the budget via `dp_budget_fraction` in the UI. When set, the fraction reduces the budget available to the main synthesiser.
 
@@ -20,7 +20,7 @@ PrivSyn supports two synthesis engines—PrivSyn (rho-CDP) and AIM (approximate 
 
 ## 3. Rho Conversion
 
-The helper `util/rho_cdp.py` implements conversions between (ε, δ) and ρ (zCDP). Keep in mind that when composing multiple DP mechanisms (e.g., preprocessing + synthesis + evaluation), the rho values add linearly:
+The helper `method/util/rho_cdp.py` implements conversions between (ε, δ) and ρ (zCDP). Keep in mind that when composing multiple DP mechanisms (e.g., preprocessing + synthesis + evaluation), the rho values add linearly:
 
 ```
 ρ_total = ρ_preprocess + ρ_synthesis + ρ_evaluation
