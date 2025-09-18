@@ -44,7 +44,7 @@ jobs:
           gcloud builds submit \
             --project "${PROJECT_ID}" \
             --tag "${IMAGE}" \
-            --no-stream-logs
+            --suppress-logs
 
       - name: Deploy to Cloud Run
         run: |
