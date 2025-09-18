@@ -170,13 +170,21 @@ const CategoricalEditor = ({
           type="text"
           className="form-control"
           placeholder="Add new category"
+          data-testid={`category-input-${idBase}`}
           value={newCategory}
           onChange={(e) => {
             setNewCategory(e.target.value);
             setHelperMessage(null);
           }}
         />
-        <button type="button" className="btn btn-outline-success" onClick={handleAddCategory}>Add</button>
+      <button
+        type="button"
+        className="btn btn-outline-success"
+        data-testid={`category-add-${idBase}`}
+        onClick={handleAddCategory}
+      >
+        Add
+      </button>
       </div>
 
       {helperMessage && (

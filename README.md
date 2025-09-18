@@ -2,6 +2,29 @@
 
 > End-to-end tooling for creating differentially private tabular datasets with PrivSyn and AIM.
 
+## Demo
+
+
+1. **Upload & configure:** pick a synthesis method, dataset name, privacy budget, and either upload your CSV or load the bundled `adult` sample.
+2. **Confirm metadata:** skim the summary card, then fine-tune per-column settings (categorical domains, numeric bounds, binning choices).
+3. **Review results:** download the synthesized CSV, preview the first rows, and inspect metadata-aware evaluation metrics.
+
+<p align="center">
+  <img src="docs/media/ui_form.png" alt="Step 1 – Upload & configure synthesis" width="88%" />
+</p>
+
+<p align="center">
+  <img src="docs/media/ui_metadata_overview.png" alt="Step 2 – Metadata overview" width="88%" />
+</p>
+
+<p align="center">
+  <img src="docs/media/ui_results.png" alt="Step 3 – Download synthesized data" width="88%" />
+</p>
+
+> These screenshots were generated with `python scripts/capture_ui_screenshots.py`. The script drives a Playwright browser through the sample flow and can be rerun whenever the UI changes.
+
+For a deeper walkthrough of each step (UI wiring, API payloads, evaluation metrics), check out [docs/frontend.md](docs/frontend.md) and [docs/backend.md](docs/backend.md).
+
 ## Highlights
 
 - **Unified web app.** Upload a dataset, review inferred metadata, tweak categorical/numerical encodings, and download synthesized data in minutes.
@@ -48,6 +71,23 @@ Visit `http://127.0.0.1:5174`. The frontend defaults to `http://127.0.0.1:8001` 
 4. Download the resulting CSV or explore the preview table.
 5. Want a quick preview without running anything? Check `docs/sample_output/` for a tiny synthetic CSV and matching metrics JSON.
 
+### Refresh UI screenshots (optional)
+
+We keep the screenshots in `docs/media/` up to date via Playwright:
+
+```bash
+python scripts/capture_ui_screenshots.py
+```
+
+The script starts both dev servers (or reuses them if already running), walks through the sample adult dataset, and writes:
+
+- `docs/media/ui_form.png`
+- `docs/media/ui_metadata_overview.png`
+- `docs/media/ui_metadata_column.png`
+- `docs/media/ui_results.png`
+
+> Make sure Playwright browsers are installed once with `playwright install`, and no other process is already bound to ports `8001` / `5174`.
+
 ## Architecture Diagrams
 
 <p><em>All diagrams live in <code>docs/media/</code>; replace or expand them to match your deployment.</em></p>
@@ -60,7 +100,7 @@ Shows how the user-facing frontend interacts with the FastAPI backend: upload �
 
 ### PrivSyn pipeline
 
-<img src="docs/media/privsyn.svg" alt="PrivSyn pipeline" width="600" />
+<img src="docs/media/privsyn.svg" alt="PrivSyn pipeline" width="300" />
 
 Highlights the preprocessing stage (metadata normalisation), the PrivSyn core (marginal selection + GUM), and post-processing steps (storage/evaluation).
 

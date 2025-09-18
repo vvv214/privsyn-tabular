@@ -34,6 +34,23 @@ This document outlines the most common deployment paths for the PrivSyn web appl
    - `VITE_API_BASE_URL`: the public URL of the service if you intend to serve the frontend from the same container.
    - `CORS_ALLOW_ORIGINS`: optional comma-separated list of additional origins to append to the defaults in `web_app/main.py`.
 
+### 2.1 Continuous deployment from GitHub Actions
+
+Automated deployments run via `.github/workflows/deploy-cloudrun.yml` whenever `main` is updated. The workflow:
+
+1. Checks out the repository.
+2. Authenticates to GCP using `GCP_SA_KEY` (a JSON service-account key stored as a GitHub secret).
+3. Builds and pushes `gcr.io/gen-lang-client-0649776758/privsyn-tabular` via `gcloud builds submit`.
+4. Deploys the image to Cloud Run in `us-east4` with `--allow-unauthenticated`.
+
+To keep it working you must ensure the following GitHub secrets are defined:
+
+| Secret       | Value                                                                   |
+|--------------|-------------------------------------------------------------------------| 
+| `GCP_SA_KEY` | Service-account JSON with roles `Cloud Run Admin`, `Cloud Build Editor`, `Service Account User`. |
+
+The project (`gen-lang-client-0649776758`), region (`us-east4`), and image name are baked into the workflow. If you need a different target, update `.github/workflows/deploy-cloudrun.yml`.
+
 ## 3. Vercel Frontend + Hosted Backend
 
 1. Deploy the backend (Docker, Cloud Run, or elsewhere) and note the public base URL.
