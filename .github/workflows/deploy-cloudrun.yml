@@ -41,10 +41,21 @@ jobs:
 
       - name: Build and push container image
         run: |
-          gcloud builds submit \
+          set -euo pipefail
+          OPERATION=$(gcloud builds submit \
             --project "${PROJECT_ID}" \
             --tag "${IMAGE}" \
-            --suppress-logs
+            --async \
+            --format='value(name)')
+          echo "Started Cloud Build operation: ${OPERATION}"
+          gcloud builds operations wait "${OPERATION}" --project "${PROJECT_ID}"
+          BUILD_ID=$(basename "${OPERATION}")
+          STATUS=$(gcloud builds describe "${BUILD_ID}" --project "${PROJECT_ID}" --format='value(status)')
+          echo "Cloud Build finished with status: ${STATUS}"
+          if [ "${STATUS}" != "SUCCESS" ]; then
+            echo "Cloud Build failed" >&2
+            exit 1
+          fi
 
       - name: Deploy to Cloud Run
         run: |
