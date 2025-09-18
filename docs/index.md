@@ -4,7 +4,7 @@ Welcome to the MkDocs-powered handbook for the PrivSyn tabular synthesis project
 
 ## Quick Links
 
-- [Repository README](../README.md) – high-level overview, quick-start commands, and architecture diagrams.
+- [Repository README](https://github.com/vvv214/privsyn-tabular#readme) – high-level overview, quick-start commands, and architecture diagrams.
 - [Frontend Guide](frontend.md) – React/Vite structure, metadata editors, and component testing.
 - [Backend Guide](backend.md) – FastAPI endpoints, synthesis orchestration, and data flow.
 - [Testing Playbook](testing.md) – pytest conventions, Playwright E2E flows, and focused command examples.

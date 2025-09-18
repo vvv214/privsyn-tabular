@@ -11,7 +11,7 @@ nav:
   - Deployment: deployment.md
   - Privacy: privacy.md
   - Reference:
-      - Documentation Map: README.md
+      - Documentation Map: docs-map.md
 theme:
   name: mkdocs
 markdown_extensions:

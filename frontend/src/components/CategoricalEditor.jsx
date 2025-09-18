@@ -203,6 +203,36 @@ const CategoricalEditor = ({
       </select>
       <div className="form-text">Unselect values to mark them as unexpected in the uploaded data.</div>
 
+      <div className="mt-3">
+        <p className="mb-1 fw-semibold">Selected values ({appliedSelected.length})</p>
+        {appliedSelected.length ? (
+          <div className="d-flex flex-wrap gap-2">
+            {appliedSelected.map((val) => (
+              <span key={`sel-${val}`} className="badge bg-primary-subtle text-dark border border-primary-subtle">
+                {val}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted">No values selected. Use the list above to include categories.</p>
+        )}
+      </div>
+
+      <div className="mt-3">
+        <p className="mb-1 fw-semibold">Available to exclude ({excludedValues.length})</p>
+        {excludedValues.length ? (
+          <div className="d-flex flex-wrap gap-2">
+            {excludedValues.map((val) => (
+              <span key={`ex-${val}`} className="badge bg-light text-dark border">
+                {val}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted">All detected values are currently selected.</p>
+        )}
+      </div>
+
       <div className="input-group input-group-sm mt-3">
         <input
           type="text"

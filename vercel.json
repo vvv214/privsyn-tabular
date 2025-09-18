@@ -1,8 +1,20 @@
 {
   "rewrites": [
     {
+      "source": "/doc",
+      "destination": "https://docs.privsyn.com"
+    },
+    {
       "source": "/doc/(.*)",
-      "destination": "https://privsyn-tabular-docs.vercel.app/$1"
+      "destination": "https://docs.privsyn.com/$1"
+    },
+    {
+      "source": "/docs",
+      "destination": "https://docs.privsyn.com"
+    },
+    {
+      "source": "/docs/(.*)",
+      "destination": "https://docs.privsyn.com/$1"
     }
   ]
 }
