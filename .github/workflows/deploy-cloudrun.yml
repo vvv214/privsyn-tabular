@@ -42,20 +42,33 @@ jobs:
       - name: Build and push container image
         run: |
           set -euo pipefail
-          OPERATION=$(gcloud builds submit \
+          BUILD_NAME=$(gcloud builds submit \
             --project "${PROJECT_ID}" \
             --tag "${IMAGE}" \
             --async \
             --format='value(name)')
-          echo "Started Cloud Build operation: ${OPERATION}"
-          gcloud builds operations wait "${OPERATION}" --project "${PROJECT_ID}"
-          BUILD_ID=$(basename "${OPERATION}")
-          STATUS=$(gcloud builds describe "${BUILD_ID}" --project "${PROJECT_ID}" --format='value(status)')
-          echo "Cloud Build finished with status: ${STATUS}"
-          if [ "${STATUS}" != "SUCCESS" ]; then
-            echo "Cloud Build failed" >&2
-            exit 1
-          fi
+          BUILD_ID=$(basename "${BUILD_NAME}")
+          echo "Started Cloud Build: ${BUILD_ID}"
+          STATUS="PENDING"
+          while true; do
+            STATUS=$(gcloud builds describe "${BUILD_ID}" --project "${PROJECT_ID}" --format='value(status)')
+            echo "Cloud Build status: ${STATUS}"
+            case "${STATUS}" in
+              SUCCESS)
+                break
+                ;;
+              FAILURE|CANCELLED|TIMEOUT|INTERNAL_ERROR|EXPIRED)
+                echo "Cloud Build failed with status: ${STATUS}" >&2
+                gcloud builds log "${BUILD_ID}" --project "${PROJECT_ID}"
+                exit 1
+                ;;
+              "")
+                echo "Unable to determine build status" >&2
+                exit 1
+                ;;
+            esac
+            sleep 10
+          done
 
       - name: Deploy to Cloud Run
         run: |
