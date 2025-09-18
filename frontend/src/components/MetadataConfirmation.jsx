@@ -23,8 +23,9 @@ const MetadataConfirmation = ({ uniqueId, inferredDomainData, inferredInfoData, 
                     ? [...details.categories]
                     : fallbackCategories;
                 const categories = baseCategories;
-                const selected = details.selected_categories ? [...details.selected_categories] : [...categories];
-                const custom = details.custom_categories ? [...details.custom_categories] : [];
+
+                const selected = [...categories];
+                const custom = [];
                 const normalizedStrategy = details.excluded_strategy === 'keep_in_domain'
                     ? 'resample'
                     : details.excluded_strategy || 'map_to_special';
@@ -92,22 +93,43 @@ const MetadataConfirmation = ({ uniqueId, inferredDomainData, inferredInfoData, 
             let updatedEntry = { ...previousEntry };
 
             if (subKey === 'type') {
+                const snapshot = previousEntry._preserved_categorical || {
+                    categories: Array.isArray(previousEntry.categories) ? [...previousEntry.categories] : [],
+                    selected_categories: Array.isArray(previousEntry.selected_categories) ? [...previousEntry.selected_categories] : [],
+                    custom_categories: Array.isArray(previousEntry.custom_categories) ? [...previousEntry.custom_categories] : [],
+                    excluded_strategy: previousEntry.excluded_strategy,
+                    special_token: previousEntry.special_token,
+                    value_counts: previousEntry.value_counts,
+                    categories_preview: previousEntry.categories_preview,
+                    category_null_token: previousEntry.category_null_token,
+                    size: previousEntry.size,
+                };
                 updatedEntry.type = value;
                 if (value === 'categorical') {
-                    const categories = Array.isArray(previousEntry.categories) && previousEntry.categories.length > 0
-                        ? previousEntry.categories
-                        : (Array.isArray(previousEntry.categories_preview)
-                            ? previousEntry.categories_preview
-                            : Object.keys(previousEntry.value_counts || {}));
+                    const fallbackCategories = Array.isArray(previousEntry.categories_preview)
+                        ? previousEntry.categories_preview
+                        : Object.keys(previousEntry.value_counts || {});
+                    const baseCategories = snapshot.categories && snapshot.categories.length > 0
+                        ? snapshot.categories
+                        : fallbackCategories;
+                    const categories = baseCategories;
+                    const selectedSnapshot = snapshot.selected_categories && snapshot.selected_categories.length > 0
+                        ? snapshot.selected_categories
+                        : categories;
+                    const customSnapshot = Array.isArray(snapshot.custom_categories) ? snapshot.custom_categories : [];
                     updatedEntry = {
                         ...updatedEntry,
                         categories,
-                        selected_categories: [...(previousEntry.selected_categories || categories)],
-                        custom_categories: [...(previousEntry.custom_categories || [])],
-                        excluded_strategy: previousEntry.excluded_strategy || 'map_to_special',
-                        special_token: previousEntry.special_token || SPECIAL_TOKEN_DEFAULT,
-                        size: new Set([...(previousEntry.selected_categories || categories), ...(previousEntry.custom_categories || [])]).size || (previousEntry.size ?? categories.length),
+                        selected_categories: [...selectedSnapshot],
+                        custom_categories: [...customSnapshot],
+                        excluded_strategy: snapshot.excluded_strategy || 'map_to_special',
+                        special_token: snapshot.special_token || SPECIAL_TOKEN_DEFAULT,
+                        value_counts: snapshot.value_counts || updatedEntry.value_counts,
+                        categories_preview: snapshot.categories_preview || updatedEntry.categories_preview,
+                        category_null_token: snapshot.category_null_token || updatedEntry.category_null_token,
+                        size: new Set([...selectedSnapshot, ...customSnapshot]).size || (snapshot.size ?? categories.length),
                         nonNumericWarning: false,
+                        _preserved_categorical: undefined,
                     };
                 } else {
                     const candidateSummary = previousEntry.numeric_candidate_summary || previousEntry.numeric_summary;
@@ -128,6 +150,7 @@ const MetadataConfirmation = ({ uniqueId, inferredDomainData, inferredInfoData, 
                             dp_budget_fraction: previousEntry.binning?.dp_budget_fraction ?? 0.05,
                         },
                         nonNumericWarning: !hasCandidate,
+                        _preserved_categorical: snapshot,
                     };
                 }
             } else {
@@ -264,6 +287,9 @@ const MetadataConfirmation = ({ uniqueId, inferredDomainData, inferredInfoData, 
         const messages = validateDomainData(domainData);
         if (messages.length > 0) {
             setValidationMessages(messages);
+            setTimeout(() => {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }, 0);
             return;
         }
 
@@ -344,15 +370,34 @@ const MetadataConfirmation = ({ uniqueId, inferredDomainData, inferredInfoData, 
                                                 </p>
                                                 <div className="mb-2">
                                                     <label htmlFor={`domain_${key}_type`} className="form-label">Type</label>
-                                                    <select
-                                                        id={`domain_${key}_type`}
-                                                        className="form-select"
-                                                        value={value.type}
-                                                        onChange={(e) => handleDomainChange(key, 'type', e.target.value)}
-                                                    >
-                                                        <option value="categorical">Categorical</option>
-                                                        <option value="numerical">Numerical</option>
-                                                    </select>
+                                                    {(() => {
+                                                        const reasons = inferenceReport[key]?.reasons || [];
+                                                        const reasonCodes = new Set(reasons.map((reason) => reason.code));
+                                                        const ambiguousCodes = new Set([
+                                                            'integer_unique_below_threshold',
+                                                            'integer_sparse_unique',
+                                                            'float_unique_low',
+                                                        ]);
+                                                        const allowNumericOption = Array.from(ambiguousCodes).some((code) => reasonCodes.has(code));
+                                                        const typeOptions = value.type === 'categorical'
+                                                            ? ['categorical', ...(allowNumericOption ? ['numerical'] : [])]
+                                                            : ['numerical', ...(allowNumericOption ? ['categorical'] : [])];
+
+                                                        return (
+                                                            <select
+                                                                id={`domain_${key}_type`}
+                                                                className="form-select"
+                                                                value={value.type}
+                                                                onChange={(e) => handleDomainChange(key, 'type', e.target.value)}
+                                                            >
+                                                                {typeOptions.map((typeOption) => (
+                                                                    <option key={typeOption} value={typeOption}>
+                                                                        {typeOption === 'categorical' ? 'Categorical' : 'Numerical'}
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+                                                        );
+                                                    })()}
                                                 </div>
                                                 {value.type === 'categorical' ? (
                                                     <CategoricalEditor

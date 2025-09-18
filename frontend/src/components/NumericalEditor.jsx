@@ -111,6 +111,9 @@ const NumericalEditor = ({ columnKey, domainDetails, onChange, showNonNumericWar
           Detected values for this column could not be parsed as numbers. Updating to numerical will coerce everything to the provided bounds.
         </div>
       )}
+      <div className="form-text mb-3">
+        Define the domain based on your knowledge of the dataset. Even if observed samples stay within a narrow range, include the full range you expect in production so the overall process remains DP.
+      </div>
       <div className="row g-2">
         <div className="col-6">
           <label className="form-label" htmlFor={minInputId}>Minimum</label>

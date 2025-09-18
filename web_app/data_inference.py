@@ -72,7 +72,7 @@ def _infer_column_type(col_name: str, series: pd.Series) -> Tuple[str, Dict[str,
                     {
                         "code": "integer_sparse_unique",
                         "message": (
-                            f"Integer column has sparse uniques ({unique_values}/{total_rows}); treating as categorical."
+                            f"Integer column has only {unique_values} unique values across {total_rows} rows; consider treating it as categorical."
                         ),
                     }
                 )
@@ -91,7 +91,7 @@ def _infer_column_type(col_name: str, series: pd.Series) -> Tuple[str, Dict[str,
                     {
                         "code": "float_unique_low",
                         "message": (
-                            f"Float column has only {unique_values} distinct values (< {FLOAT_UNIQUE_THRESHOLD})."
+                            f"Float column has only {unique_values} distinct values (threshold: {FLOAT_UNIQUE_THRESHOLD}); consider treating it as categorical."
                         ),
                     }
                 )

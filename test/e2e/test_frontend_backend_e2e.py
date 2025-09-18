@@ -81,7 +81,7 @@ def assert_gender_options(page, retries=3):
         try:
             gender_values = page.locator(selector)
             gender_values.wait_for(state="visible")
-            options = gender_values.locator("option")
+            options = gender_values.locator("span")
             assert options.count() > 0, "Expected detected categorical values for gender"
             option_texts = options.all_text_contents()
             assert any(label.strip() for label in option_texts), "Detected values list should have non-empty labels"
@@ -114,12 +114,12 @@ def test_end_to_end_frontend_backend():
 def test_metadata_validation_blocked():
     def flow(page):
         assert_gender_options(page)
-        page.get_by_test_id("categorical-clear-gender").wait_for()
-        page.get_by_test_id("categorical-clear-gender").click()
-        page.get_by_role("button", name="Confirm & Synthesize").click()
-        alert = page.get_by_test_id("metadata-validation-alert")
-        alert.wait_for()
-        assert "Select at least one category" in alert.inner_text()
+        add_input = page.get_by_placeholder("Add new category")
+        add_input.fill("   ")
+        page.get_by_role("button", name="Add").click()
+        helper = page.get_by_test_id("category-helper-message")
+        helper.wait_for()
+        assert "Enter a non-empty value" in helper.inner_text()
 
     run_e2e(flow)
 
