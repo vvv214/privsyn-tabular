@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        <link rel="canonical" href="https://privsyn-tabular-docs.vercel.app/frontend/">
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>Frontend - PrivSyn Tabular Docs</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../css/brands.min.css" rel="stylesheet">
+        <link href="../css/solid.min.css" rel="stylesheet">
+        <link href="../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">PrivSyn Tabular Docs</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item">
+                                <a href=".." class="nav-link">Overview</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="./" class="nav-link active" aria-current="page">Frontend</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../backend/" class="nav-link">Backend</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../testing/" class="nav-link">Testing</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../deployment/" class="nav-link">Deployment</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../privacy/" class="nav-link">Privacy</a>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Reference</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../docs-map/" class="dropdown-item">Documentation Map</a>
+</li>
+                                </ul>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href=".." class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="../backend/" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="https://github.com/vvv214/privsyn-tabular/edit/master/docs/frontend.md" class="nav-link">Edit on vvv214/privsyn-tabular
+                                    </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#frontend-guide" class="nav-link">Frontend Guide</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#high-level-flow" class="nav-link">High-Level Flow</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#components-at-a-glance" class="nav-link">Components at a Glance</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#component-tests" class="nav-link">Component Tests</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#manual-testing-checklist" class="nav-link">Manual Testing Checklist</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#useful-commands" class="nav-link">Useful Commands</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="frontend-guide">Frontend Guide<a class="headerlink" href="#frontend-guide" title="Permanent link">&para;</a></h1>
+<h2 id="high-level-flow">High-Level Flow<a class="headerlink" href="#high-level-flow" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Upload Form (<code>SynthesisForm.jsx</code>)</strong></li>
+<li>Validates file type (<code>.csv</code>/<code>.zip</code>), ensures consistent row lengths, and displays inline errors.</li>
+<li>Supports loading the sample dataset without a file.</li>
+<li><strong>Metadata Confirmation (<code>MetadataConfirmation.jsx</code>)</strong></li>
+<li>Normalises inferred domain data so categorical/numerical editors always have sensible defaults.</li>
+<li>Validation rules (as of now):<ul>
+<li>Categorical columns must retain at least one category (selected or custom).</li>
+<li>Numerical columns require both min and max and enforce <code>max ≥ min</code>.</li>
+</ul>
+</li>
+<li>Shows aggregated errors before allowing submission.</li>
+<li><strong>Results (<code>ResultsDisplay.jsx</code>)</strong></li>
+<li>Displays download link, preview table, and evaluation JSON payloads.</li>
+</ol>
+<p>These steps mirror the Playwright E2E scenario in <code>test/e2e/test_frontend_backend_e2e.py</code>. When evolving the UI, align component changes with assertions there to keep regressions visible.</p>
+<h2 id="components-at-a-glance">Components at a Glance<a class="headerlink" href="#components-at-a-glance" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Purpose</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SynthesisForm.jsx</code></td>
+<td>Handles dataset name, epsilon/delta, method selection, and file upload.</td>
+<td>Relies on PapaParse for CSV validation; errors bubble up via local state.</td>
+</tr>
+<tr>
+<td><code>MetadataConfirmation.jsx</code></td>
+<td>Top-level container for the confirmation card, orchestrates per-column editors and validation.</td>
+<td>Tracks validation issues in state; any red banner you see is triggered here.</td>
+</tr>
+<tr>
+<td><code>CategoricalEditor.jsx</code></td>
+<td>Lets users select/deselect categories, add custom values, and choose handling for excluded values.</td>
+<td>Falls back to <code>value_counts</code>, <code>categories_preview</code>, etc., when the inferred list is empty, and blocks duplicate custom entries case-insensitively.</td>
+</tr>
+<tr>
+<td><code>NumericalEditor.jsx</code></td>
+<td>Edits min/max bounds, binning strategies, and DP budget sliders.</td>
+<td>Non-numeric warnings show when the column couldn’t be parsed numerically.</td>
+</tr>
+<tr>
+<td><code>ResultsDisplay.jsx</code></td>
+<td>Presents the download button, preview table, and evaluation JSON block.</td>
+<td>Shows inline warnings when evaluation fails and lets the user retry; download link is disabled while evaluation is in flight.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="component-tests">Component Tests<a class="headerlink" href="#component-tests" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>MetadataConfirmation.test.jsx</code> (Vitest) confirms that categorical lists render even when the backend only supplies <code>value_counts</code>, and it verifies the red alert banner blocks submission when categories are cleared or numeric bounds invert.</li>
+<li><code>NumericalEditor.test.jsx</code> (Vitest) exercises the per-bound validation warnings (e.g., extremely large magnitudes and bad numeric input).</li>
+<li>Add further tests alongside their components in <code>frontend/src/components/</code>—Vitest picks up <code>*.test.jsx</code> files automatically.</li>
+</ul>
+<h2 id="manual-testing-checklist">Manual Testing Checklist<a class="headerlink" href="#manual-testing-checklist" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Upload a well-formed CSV and confirm that the metadata table is populated.</li>
+<li>Try an invalid CSV (e.g., mismatched columns) and ensure the form surfaces the error.</li>
+<li>On the confirmation page, clear all categories for a column and assert the validation banner appears; fix the error and verify submission succeeds.</li>
+<li>Enter an extremely large minimum/maximum (e.g., <code>1e12</code>) and verify the inline warning appears; try an invalid string to confirm it is rejected without updating the value.</li>
+<li>Attempt to add a custom category whose value already exists (e.g., <code>female</code> vs <code>Female</code>) and confirm the inline warning appears.</li>
+<li>Check number bounds (blank, non-numeric, max &lt; min) all trigger errors.</li>
+<li>Confirm the results page renders both the preview and the evaluation JSON.</li>
+</ul>
+<h2 id="useful-commands">Useful Commands<a class="headerlink" href="#useful-commands" title="Permanent link">&para;</a></h2>
+<pre><code class="language-bash"># Start the dev server
+cd frontend
+npm install
+npm run dev -- --port 5174
+
+# Lint
+npm run lint
+
+# Frontend end-to-end test (requires backend running)
+E2E=1 pytest -q -k end_to_end
+</code></pre></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

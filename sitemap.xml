@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url>
+         <loc>https://privsyn-tabular-docs.vercel.app/</loc>
+         <lastmod>2025-09-19</lastmod>
+    </url>
+    <url>
+         <loc>https://privsyn-tabular-docs.vercel.app/backend/</loc>
+         <lastmod>2025-09-19</lastmod>
+    </url>
+    <url>
+         <loc>https://privsyn-tabular-docs.vercel.app/deployment/</loc>
+         <lastmod>2025-09-19</lastmod>
+    </url>
+    <url>
+         <loc>https://privsyn-tabular-docs.vercel.app/docs-map/</loc>
+         <lastmod>2025-09-19</lastmod>
+    </url>
+    <url>
+         <loc>https://privsyn-tabular-docs.vercel.app/frontend/</loc>
+         <lastmod>2025-09-19</lastmod>
+    </url>
+    <url>
+         <loc>https://privsyn-tabular-docs.vercel.app/privacy/</loc>
+         <lastmod>2025-09-19</lastmod>
+    </url>
+    <url>
+         <loc>https://privsyn-tabular-docs.vercel.app/testing/</loc>
+         <lastmod>2025-09-19</lastmod>
+    </url>
+</urlset>

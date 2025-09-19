@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        <link rel="canonical" href="https://privsyn-tabular-docs.vercel.app/testing/">
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>Testing - PrivSyn Tabular Docs</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../css/brands.min.css" rel="stylesheet">
+        <link href="../css/solid.min.css" rel="stylesheet">
+        <link href="../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">PrivSyn Tabular Docs</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item">
+                                <a href=".." class="nav-link">Overview</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../frontend/" class="nav-link">Frontend</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../backend/" class="nav-link">Backend</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="./" class="nav-link active" aria-current="page">Testing</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../deployment/" class="nav-link">Deployment</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../privacy/" class="nav-link">Privacy</a>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Reference</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../docs-map/" class="dropdown-item">Documentation Map</a>
+</li>
+                                </ul>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="../backend/" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="../deployment/" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="https://github.com/vvv214/privsyn-tabular/edit/master/docs/testing.md" class="nav-link">Edit on vvv214/privsyn-tabular
+                                    </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#testing-guide" class="nav-link">Testing Guide</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#setup" class="nav-link">Setup</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#test-layers" class="nav-link">Test Layers</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#quick-commands" class="nav-link">Quick Commands</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#whats-covered" class="nav-link">What’s Covered?</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#local-tips" class="nav-link">Local Tips</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#ci-notes" class="nav-link">CI Notes</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="testing-guide">Testing Guide<a class="headerlink" href="#testing-guide" title="Permanent link">&para;</a></h1>
+<h2 id="setup">Setup<a class="headerlink" href="#setup" title="Permanent link">&para;</a></h2>
+<p>Install test dependencies once per virtual environment:</p>
+<pre><code class="language-bash">python3 -m pip install -r requirements.txt pytest-cov
+npm install --prefix frontend
+python3 -m playwright install
+</code></pre>
+<p><code>pytest-cov</code> is optional locally but required for commands that collect coverage (CI installs it automatically).</p>
+<h2 id="test-layers">Test Layers<a class="headerlink" href="#test-layers" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Path</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Unit / Integration</td>
+<td><code>test/test_*.py</code></td>
+<td>Covers API contracts, PrivSyn helpers, preprocessors, etc.</td>
+</tr>
+<tr>
+<td>Frontend unit</td>
+<td><code>frontend/src/**/*.test.jsx</code></td>
+<td>Vitest + React Testing Library exercises UI validation (e.g., <code>MetadataConfirmation</code>).</td>
+</tr>
+<tr>
+<td>End-to-End</td>
+<td><code>test/e2e/</code></td>
+<td>Playwright flows that boot both frontend and backend.</td>
+</tr>
+<tr>
+<td>Frontend lint</td>
+<td><code>frontend/eslint</code></td>
+<td>Run via <code>npm run lint</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>Markers &amp; conventions:
+- <code>slow</code>: long-running algorithmic tests. Skip with <code>-m "not slow"</code> for fast feedback.
+- <code>e2e</code>: Playwright browser automation. Enable with <code>E2E=1</code> to avoid booting browsers by default.
+- <code>-W error::DeprecationWarning -W error::FutureWarning</code>: promote warnings to failures on critical packages when hardening a change.</p>
+<h2 id="quick-commands">Quick Commands<a class="headerlink" href="#quick-commands" title="Permanent link">&para;</a></h2>
+<pre><code class="language-bash"># Fast unit/integration loop
+pytest -q -m &quot;not slow&quot;
+
+# Full suite with coverage (requires pytest-cov)
+pytest --cov=. --cov-report=term
+
+# Warning hygiene for backend + core helpers
+pytest -q -W error::DeprecationWarning -W error::FutureWarning -k &quot;web_app or method/preprocess_common or method/synthesis/privsyn&quot;
+
+# Run only API contract tests
+pytest -q test/test_api_contract.py
+
+# Frontend component tests
+cd frontend
+npm test -- --run
+
+# Playwright end-to-end (requires Playwright browsers &amp; npm deps)
+E2E=1 pytest -q -k e2e
+</code></pre>
+<h2 id="whats-covered">What’s Covered?<a class="headerlink" href="#whats-covered" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Metadata overrides</strong> (<code>test/test_metadata_overrides.py</code>): round-trip of <code>/synthesize</code> → <code>/confirm_synthesis</code>, categorical resample strategy, numeric coercion, and exponential binning scenarios.</li>
+<li><strong>PrivSyn internals</strong> (<code>test/test_privsyn_*</code>): domain helpers, update config, records update, marginal selection.</li>
+<li><strong>Discretizers</strong> (<code>test/test_privtree.py</code>, <code>test/test_dawa.py</code>): deterministic unit tests for PrivTree and DAWA helpers.</li>
+<li><strong>API contracts</strong> (<code>test/test_api*.py</code>): unified synthesizer interface, metrics hook, deterministic sampling semantics.</li>
+<li><strong>End-to-end</strong> (<code>test/e2e/test_frontend_backend_e2e.py</code>): upload sample → confirm metadata (category fallback + validation) → synthesize → download.</li>
+<li><strong>Frontend components</strong> (<code>frontend/src/components/*.test.jsx</code>): Vitest suites covering metadata confirmation, categorical editing, and numeric bound validation warnings.</li>
+</ul>
+<h2 id="local-tips">Local Tips<a class="headerlink" href="#local-tips" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Install Playwright browsers once with <code>python3 -m playwright install --with-deps</code> if you plan to run E2E.</li>
+<li>Ensure ports 8001 (backend) and 5174 (frontend) are free before running <code>E2E=1</code> tests; the suite spawns both servers automatically.</li>
+<li>Browser tests default to Chromium; you can change <code>p.chromium.launch()</code> to other browsers if needed.</li>
+<li>Set <code>PLAYWRIGHT_HEADLESS=0</code> to watch the browser session while debugging.</li>
+</ul>
+<h2 id="ci-notes">CI Notes<a class="headerlink" href="#ci-notes" title="Permanent link">&para;</a></h2>
+<ul>
+<li>GitHub Actions workflow <code>ci.yml</code> runs the backend tests with coverage and uploads to Codecov when <code>CODECOV_TOKEN</code> is configured.</li>
+<li>E2E job (<code>jobs.e2e</code>) is opt-in—triggered by setting <code>E2E=1 pytest -q -k e2e</code> after installing Playwright dependencies.</li>
+</ul></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

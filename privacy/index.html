@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        <link rel="canonical" href="https://privsyn-tabular-docs.vercel.app/privacy/">
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>Privacy - PrivSyn Tabular Docs</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../css/brands.min.css" rel="stylesheet">
+        <link href="../css/solid.min.css" rel="stylesheet">
+        <link href="../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">PrivSyn Tabular Docs</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item">
+                                <a href=".." class="nav-link">Overview</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../frontend/" class="nav-link">Frontend</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../backend/" class="nav-link">Backend</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../testing/" class="nav-link">Testing</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../deployment/" class="nav-link">Deployment</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="./" class="nav-link active" aria-current="page">Privacy</a>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Reference</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../docs-map/" class="dropdown-item">Documentation Map</a>
+</li>
+                                </ul>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="../deployment/" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="../docs-map/" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="https://github.com/vvv214/privsyn-tabular/edit/master/docs/privacy.md" class="nav-link">Edit on vvv214/privsyn-tabular
+                                    </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#privacy-budget-notes" class="nav-link">Privacy Budget Notes</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#1-privsyn" class="nav-link">1. PrivSyn</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#2-aim" class="nav-link">2. AIM</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#3-rho-conversion" class="nav-link">3. Rho Conversion</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#4-evaluation-considerations" class="nav-link">4. Evaluation Considerations</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#5-future-work" class="nav-link">5. Future Work</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="privacy-budget-notes">Privacy Budget Notes<a class="headerlink" href="#privacy-budget-notes" title="Permanent link">&para;</a></h1>
+<p>PrivSyn supports two synthesis engines—PrivSyn (rho-CDP) and AIM (approximate zCDP). This note summarises how epsilon, delta, and rho play together so you can rationalise the budget before deploying to production.</p>
+<h2 id="1-privsyn">1. PrivSyn<a class="headerlink" href="#1-privsyn" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Interface</strong>: the API accepts an <code>epsilon</code>/<code>delta</code> pair. Internally the PrivSyn library converts these to a rho-zCDP budget using <code>method/util/rho_cdp.py</code>.</li>
+<li><strong>Iterations</strong>: the number of update iterations (<code>update_iterations</code>) and consistency passes (<code>consist_iterations</code>) consume the same global budget. Reducing them lowers overall runtime and the amount of per-marginal noise but also reduces fidelity.</li>
+<li><strong>Preprocessing</strong>: discretisation (e.g. PrivTree binning) can optionally draw a portion of the budget via <code>dp_budget_fraction</code> in the UI. When set, the fraction reduces the budget available to the main synthesiser.</li>
+</ul>
+<h3 id="practical-tips">Practical Tips<a class="headerlink" href="#practical-tips" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Prefer providing tight numeric bounds to avoid the extra noise introduced by clipping.</li>
+<li>For categorical columns, trimming rare values (or mapping them to the special token) improves stability.</li>
+<li>When exploring, start with ε between 0.5 and 2.0 and δ ≤ 1e-5; adjust upward only if the quality is insufficient and privacy policy allows it.</li>
+</ul>
+<h2 id="2-aim">2. AIM<a class="headerlink" href="#2-aim" title="Permanent link">&para;</a></h2>
+<ul>
+<li>AIM consumes the provided <code>(epsilon, delta)</code> pair directly.</li>
+<li>Runtime is sensitive to the number of iterations and workload size; for quick evaluations consider reducing the workload prior to deployment or sampling a subset of columns.</li>
+</ul>
+<h2 id="3-rho-conversion">3. Rho Conversion<a class="headerlink" href="#3-rho-conversion" title="Permanent link">&para;</a></h2>
+<p>The helper <code>method/util/rho_cdp.py</code> implements conversions between (ε, δ) and ρ (zCDP). Keep in mind that when composing multiple DP mechanisms (e.g., preprocessing + synthesis + evaluation), the rho values add linearly:</p>
+<pre><code>ρ_total = ρ_preprocess + ρ_synthesis + ρ_evaluation
+</code></pre>
+<p>Use the conversion utilities if you need to enforce a global privacy ledger across multiple pipelines.</p>
+<h2 id="4-evaluation-considerations">4. Evaluation Considerations<a class="headerlink" href="#4-evaluation-considerations" title="Permanent link">&para;</a></h2>
+<p>The <code>/evaluate</code> endpoint uses histogram-aware TVD which is <strong>not</strong> differentially private—it's intended only for offline quality assessment. Avoid exposing it to untrusted users or run it only on subsampled/aggregated outputs.</p>
+<h2 id="5-future-work">5. Future Work<a class="headerlink" href="#5-future-work" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Pluggable privacy budget managers (e.g., Google DP accounting) to track consumption across multiple runs.</li>
+<li>UI hints for typical epsilon/delta values per domain (health, finance, etc.).</li>
+</ul>
+<p>For more background on CDP and the PrivSyn method, see the references in the <code>pdf/</code> folder.</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

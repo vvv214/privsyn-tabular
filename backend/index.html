@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        <link rel="canonical" href="https://privsyn-tabular-docs.vercel.app/backend/">
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>Backend - PrivSyn Tabular Docs</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../css/brands.min.css" rel="stylesheet">
+        <link href="../css/solid.min.css" rel="stylesheet">
+        <link href="../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">PrivSyn Tabular Docs</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item">
+                                <a href=".." class="nav-link">Overview</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../frontend/" class="nav-link">Frontend</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="./" class="nav-link active" aria-current="page">Backend</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../testing/" class="nav-link">Testing</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../deployment/" class="nav-link">Deployment</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../privacy/" class="nav-link">Privacy</a>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Reference</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../docs-map/" class="dropdown-item">Documentation Map</a>
+</li>
+                                </ul>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="../frontend/" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="../testing/" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="https://github.com/vvv214/privsyn-tabular/edit/master/docs/backend.md" class="nav-link">Edit on vvv214/privsyn-tabular
+                                    </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#backend-guide" class="nav-link">Backend Guide</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#architecture-overview" class="nav-link">Architecture Overview</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#key-modules" class="nav-link">Key Modules</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#endpoint-notes" class="nav-link">Endpoint Notes</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#local-development" class="nav-link">Local Development</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#configuration-tips" class="nav-link">Configuration Tips</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="backend-guide">Backend Guide<a class="headerlink" href="#backend-guide" title="Permanent link">&para;</a></h1>
+<h2 id="architecture-overview">Architecture Overview<a class="headerlink" href="#architecture-overview" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>FastAPI application</strong>: <code>web_app/main.py</code></li>
+<li><code>/synthesize</code> infers metadata and caches the original DataFrame plus draft domain info.</li>
+<li><code>/confirm_synthesis</code> reconstructs the DataFrame with user overrides and invokes the synthesizer.</li>
+<li><code>/download_synthesized_data/{session_id}</code> streams the generated CSV for a confirmed synthesis session.</li>
+<li><code>/evaluate</code> calculates metadata-aware metrics using <code>web_app/data_comparison.py</code> (keyed by the same session ID).</li>
+<li><strong>Synthesis service</strong>: <code>web_app/synthesis_service.py</code></li>
+<li>Bridges the cached inference bundle to the selected synthesizer.</li>
+<li>Handles preprocessing (clipping, binning, categorical remap) before handing off to PrivSyn or AIM.</li>
+</ul>
+<blockquote>
+<p>Algorithm references: PrivSyn follows the approach in <a href="https://www.usenix.org/system/files/sec21-zhang-zhikun.pdf">PrivSyn: Differentially Private Data Synthesis</a>; the AIM adapter implements <a href="https://www.vldb.org/pvldb/vol15/p2599-mckenna.pdf">The AIM Mechanism for Differentially Private Synthetic Data</a>.</p>
+</blockquote>
+<h2 id="key-modules">Key Modules<a class="headerlink" href="#key-modules" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Module</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>web_app/data_inference.py</code></td>
+<td>Detect column types, normalise metadata, and prepare draft domain/info payloads.</td>
+</tr>
+<tr>
+<td><code>web_app/synthesis_service.py</code></td>
+<td>Applies overrides, constructs the preprocesser, runs the synthesizer, and persists outputs.</td>
+</tr>
+<tr>
+<td><code>web_app/data_comparison.py</code></td>
+<td>Implements histogram-aware TVD and other metrics for evaluation.</td>
+</tr>
+<tr>
+<td><code>method/synthesis/privsyn/privsyn.py</code></td>
+<td>PrivSyn implementation (marginal selection + GUM).</td>
+</tr>
+<tr>
+<td><code>method/api/base.py</code></td>
+<td>Core synthesizer API (<code>SynthRegistry</code>, <code>PrivacySpec</code>, <code>RunConfig</code>, <code>Synthesizer</code> protocol).</td>
+</tr>
+<tr>
+<td><code>method/api/utils.py</code></td>
+<td>Helper utilities used by adapters (e.g., <code>split_df_by_type</code>, schema enforcement).</td>
+</tr>
+<tr>
+<td><code>method/synthesis/AIM/adapter.py</code></td>
+<td>Adapter wiring AIM into the unified interface provided by <code>method/api</code>.</td>
+</tr>
+<tr>
+<td><code>method/preprocess_common/</code></td>
+<td>Shared discretizers (PrivTree, DAWA) and helper utilities.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="unified-synthesis-interface">Unified Synthesis Interface<a class="headerlink" href="#unified-synthesis-interface" title="Permanent link">&para;</a></h3>
+<p><code>method/api/base.py</code> defines the shared contract every synthesis method must follow:</p>
+<ul>
+<li><code>SynthRegistry</code> exposes <code>register</code>, <code>get</code>, and <code>list</code> helpers so adapters (e.g., <code>method/synthesis/privsyn/__init__.py</code>, <code>method/synthesis/AIM/__init__.py</code>) can self-register at import time.</li>
+<li><code>PrivacySpec</code> and <code>RunConfig</code> capture the caller’s DP/compute requirements and are passed through to each adapter.</li>
+<li><code>_AdapterSynth</code> and <code>_AdapterFitted</code> wrap legacy prepare/run functions so existing method code needs minimal changes.</li>
+</ul>
+<p>The backend dispatcher (<code>web_app/methods_dispatcher.py</code>) and tests such as <code>test/test_methods_dispatcher.py</code> rely on this registry to treat every method uniformly. Method-specific modules (<code>method/synthesis/&lt;name&gt;/native.py</code>, <code>config.py</code>, <code>parameter_parser.py</code>, etc.) stay alongside each algorithm because they encode behaviour that other methods do not share (e.g., PrivSyn’s marginal-selection parameters or AIM’s workload configuration). Keep the registry small and general, and let each method own its internal configuration files.</p>
+<h2 id="endpoint-notes">Endpoint Notes<a class="headerlink" href="#endpoint-notes" title="Permanent link">&para;</a></h2>
+<h3 id="post-synthesize">POST <code>/synthesize</code><a class="headerlink" href="#post-synthesize" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Expects multipart form (fields documented in <code>test/test_api_contract.py</code>).</li>
+<li>For sample runs, omit the file and set <code>dataset_name=adult</code>.</li>
+<li>Stores the uploaded DataFrame and inferred metadata under a temporary UUID in memory.</li>
+<li>All columns from the uploaded table participate in metadata inference; the API no longer accepts or drops a distinct target column.</li>
+</ul>
+<h3 id="post-confirm_synthesis">POST <code>/confirm_synthesis</code><a class="headerlink" href="#post-confirm_synthesis" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Requires the <code>unique_id</code> returned by <code>/synthesize</code>.</li>
+<li>Accepts JSON strings for <code>confirmed_domain_data</code> and <code>confirmed_info_data</code>.</li>
+<li>Runs the chosen synthesizer (<code>privsyn</code> or <code>aim</code>) and writes synthesized CSV + evaluation bundle to the temp directory.</li>
+</ul>
+<h3 id="get-download_synthesized_datasession_id">GET <code>/download_synthesized_data/{session_id}</code><a class="headerlink" href="#get-download_synthesized_datasession_id" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Streams the generated CSV for a previously confirmed synthesis session.</li>
+<li>Backed by an in-memory <code>SessionStore</code> keyed by the <code>unique_id</code> returned from <code>/synthesize</code>.</li>
+</ul>
+<h3 id="post-evaluate">POST <code>/evaluate</code><a class="headerlink" href="#post-evaluate" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Accepts <code>session_id</code> (form field) and reuses cached original/synth data to compute metrics (e.g., histogram TVD for numeric columns).</li>
+</ul>
+<h2 id="local-development">Local Development<a class="headerlink" href="#local-development" title="Permanent link">&para;</a></h2>
+<pre><code class="language-bash">uvicorn web_app.main:app --reload --port 8001
+
+# Optionally set VITE_API_BASE_URL when running the frontend separately
+export VITE_API_BASE_URL=http://127.0.0.1:8001
+</code></pre>
+<h2 id="configuration-tips">Configuration Tips<a class="headerlink" href="#configuration-tips" title="Permanent link">&para;</a></h2>
+<ul>
+<li>CORS origins are defined in <code>web_app/main.py</code>. Update the <code>allow_origins</code> list to include any new frontend domains.</li>
+<li>Set the <code>ADDITIONAL_CORS_ORIGINS</code> environment variable (comma-separated list) in production to append extra origins—useful for Vercel preview/prod URLs.</li>
+<li>Temporary artifacts (original data, synthesized CSVs) land under <code>temp_synthesis_output/</code>. Keep an eye on disk usage during iterative testing.</li>
+<li>Use environmental overrides or <code>.env</code> files for production secrets (database URLs, etc.)—the current setup only handles the stateless demo flow.</li>
+</ul></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>
