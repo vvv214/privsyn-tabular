@@ -184,7 +184,7 @@ function App() {
       const response = await axios.post(`${API_URL}/confirm_synthesis`, data, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      const { message: msg, dataset_name: name, session_id: newSessionId } = response.data;
+      const { message: msg, session_id: newSessionId } = response.data;
       setMessage(msg);
       setSessionId(newSessionId);
       setIsEvaluating(false);
@@ -312,10 +312,70 @@ function App() {
   return (
     <main className="app-container container-fluid">
       <div className="mx-auto" style={{ maxWidth: 960 }}>
-        <header className="text-center mb-4">
-          <h1 className="display-5">PrivSyn</h1>
-          <p className="lead text-muted">A Tool for Differentially Private Data Synthesis</p>
+        <header className="app-header text-center mb-4">
+          <div className="header-title">
+            <h1 className="display-5">PrivSyn</h1>
+            <p className="lead text-muted">A Tool for Differentially Private Data Synthesis</p>
+          </div>
+          <div className="external-links" role="navigation" aria-label="PrivSyn resources">
+            <a
+              className="external-link"
+              href="https://github.com/vvv214/privsyn-tabular"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="View the project on GitHub"
+              title="GitHub"
+            >
+              <span className="visually-hidden">GitHub</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 2a10 10 0 0 0-3.16 19.48c.5.09.68-.22.68-.48v-1.68c-2.78.6-3.37-1.34-3.37-1.34-.46-1.15-1.12-1.46-1.12-1.46-.92-.63.07-.62.07-.62 1.02.07 1.56 1.06 1.56 1.06.9 1.54 2.36 1.1 2.94.84a2.13 2.13 0 0 1 .63-1.34c-2.22-.25-4.56-1.11-4.56-4.94A3.88 3.88 0 0 1 6.7 8.44a3.6 3.6 0 0 1 .1-2.64s.84-.27 2.75 1.02a9.53 9.53 0 0 1 5 0c1.9-1.29 2.75-1.02 2.75-1.02.37.93.38 1.99.03 2.93a3.87 3.87 0 0 1 1.03 2.68c0 3.84-2.34 4.68-4.57 4.93.36.31.69.92.69 1.86v2.76c0 .27.18.58.69.48A10 10 0 0 0 12 2" />
+              </svg>
+            </a>
+            <a
+              className="external-link"
+              href="https://docs.privsyn.com"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Open the documentation site"
+              title="Documentation"
+            >
+              <span className="visually-hidden">Documentation</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M8.25 4.75h5.5l3.5 3.5v10.5a1.5 1.5 0 0 1-1.5 1.5H8.25a1.5 1.5 0 0 1-1.5-1.5V6.25a1.5 1.5 0 0 1 1.5-1.5z"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="1.6"
+                  fill="none"
+                />
+                <path
+                  d="M13.75 4.75v3.25h3.25"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="1.6"
+                  fill="none"
+                />
+                <path
+                  d="M9.5 12h5" stroke="currentColor" strokeLinecap="round" strokeWidth="1.6" fill="none" />
+                <path
+                  d="M9.5 15h3.25"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeWidth="1.6"
+                  fill="none"
+                />
+              </svg>
+            </a>
+          </div>
         </header>
+
+        {currentPage !== 'result' && (
+          <section className="cloud-run-banner" role="note">
+            <strong>Heads up:</strong> The hosted demo uses Google Cloud Run’s free tier. Large datasets or AIM runs can hit its time or memory limits—download the project and run locally if you need heavier workloads.
+          </section>
+        )}
 
         {loading && <LoadingOverlay message={message} />}
         {message && !loading && <div className="alert alert-info">{message}</div>}

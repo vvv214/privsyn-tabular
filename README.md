@@ -32,6 +32,7 @@ For a deeper walkthrough of each step (UI wiring, API payloads, evaluation metri
 - **Notebook-friendly modules.** Reusable preprocessing (PrivTree, DAWA), marginal selection, and synthesis utilities under `method/synthesis/privsyn` and `method/preprocess_common`.
 - **Coverage-first test suite.** 100+ pytest cases plus Playwright E2E flows keep the UI/back-end contract in check.
 - **MkDocs documentation.** Browse the Markdown guides with `mkdocs serve` (install via `pip install mkdocs`) and open <http://127.0.0.1:8000/> for a structured site.
+- **Built on published research.** The core algorithms follow [PrivSyn: Differentially Private Data Synthesis (USENIX Security 2021)](https://www.usenix.org/system/files/sec21-zhang-zhikun.pdf) and [The AIM Mechanism for Differentially Private Synthetic Data (PVLDB 2022)](https://www.vldb.org/pvldb/vol15/p2599-mckenna.pdf).
 
 ## Quick Start
 
@@ -42,7 +43,7 @@ git clone https://github.com/vvv214/privsyn-tabular.git
 cd privsyn-tabular
 python3 -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+python3 -m pip install -r requirements.txt
 ```
 
 ### Backend (FastAPI)
@@ -76,7 +77,7 @@ Visit `http://127.0.0.1:5174`. The frontend defaults to `http://127.0.0.1:8001` 
 We keep the screenshots in `docs/media/` up to date via Playwright:
 
 ```bash
-python scripts/capture_ui_screenshots.py
+python3 scripts/capture_ui_screenshots.py
 ```
 
 The script starts both dev servers (or reuses them if already running), walks through the sample adult dataset, and writes:
@@ -118,85 +119,95 @@ Illustrates the main request/response boundaries between frontend, backend, synt
 
 ## Testing
 
+### Install test tooling
+
+- `python3 -m pip install -r requirements.txt pytest-cov` – Python dependencies plus the coverage plugin used by CI.
+- `npm install --prefix frontend` – React/Vite dependencies for component tests.
+- `python3 -m playwright install` – one-time browser download for Playwright end-to-end flows.
+
+### Quick commands
+
+- `pytest -q` – run the full Python suite with terse output.
+- `pytest -q -m "not slow"` – skip expensive markers while iterating.
+- `pytest --cov=. --cov-report=term` – collect coverage locally (requires `pytest-cov`).
+- `pytest -q -W error::DeprecationWarning -W error::FutureWarning -k "web_app or method/preprocess_common or method/synthesis/privsyn"` – enforce warning hygiene on core modules.
+
+### Targeted runs
+
 ```bash
-# Fast feedback (skips slow markers)
-pytest -q -m "not slow"
+# Focus on metadata / preprocessing helpers
+pytest -q test/test_metadata_overrides.py test/test_preprocessing.py test/test_data_inference.py
 
-# Full suite with coverage
-pytest --cov=. --cov-report=term
+# Exercise the PrivSyn API contract only
+pytest -q -k privsyn
+```
 
-# Frontend component tests
+### Frontend & E2E
+
+```bash
+# Component tests (Vitest)
 cd frontend
 npm test -- --run
 
-# Browser E2E flows (requires Playwright browsers & frontend deps)
+# Browser E2E flows (requires backend + frontend running)
 E2E=1 pytest -q -k e2e
 ```
 
-Useful snippets:
+> Tip: set `PLAYWRIGHT_HEADLESS=0` if you want to watch the E2E browser session while debugging.
 
-```bash
-# Metadata / preprocessing focus
-pytest -q test/test_metadata_overrides.py test/test_preprocessing.py test/test_data_inference.py
+## Documentation & Diagrams
 
-# Strict warnings for core modules
-pytest -q -W error::DeprecationWarning -W error::FutureWarning -k "web_app or method/preprocess_common or method/synthesis/privsyn"
-```
+- Local preview: `pip install mkdocs && mkdocs serve` exposes the docs at <http://127.0.0.1:8000/> with search + navigation.
+- CI build: `.github/workflows/deploy-docs.yml` publishes MkDocs output to the `gh-pages` branch on every push to `main`.
+- Vercel publish: point a secondary Vercel project at `gh-pages` (output dir `.`) and update `vercel.json` rewrites to proxy `/docs/*` to that URL.
+- Optional hook: store `VERCEL_DOCS_DEPLOY_HOOK_URL` as a secret so the GitHub Action can trigger a redeploy after pushing docs.
+- Diagrams live under `docs/media/` (`sequence.svg`, `privsyn.svg`, `aim.svg`, `flow.svg`) and drive the architecture section above—replace them with your own exports as needed.
 
-## Documentation Site
-
-- GitHub Actions now build MkDocs output on every push to `main` (see `.github/workflows/deploy-docs.yml`) and publish the result to the `gh-pages` branch.
-- On Vercel, create a second project that points to this repository’s `gh-pages` branch with output directory `.` (no build command required). The project URL will serve the docs directly.
-- Update `vercel.json`’s rewrite target (`https://<replace-with-docs-project>.vercel.app/`) once you know the docs project URL so your primary site proxies `/doc/*` to the generated documentation.
-- (Optional) Create a Vercel **Deploy Hook** for the docs project and store it as `VERCEL_DOCS_DEPLOY_HOOK_URL` in repository secrets; the GitHub Action will call it after pushing to `gh-pages` so Vercel redeploys automatically.
-- Local preview remains available with `mkdocs serve`.
-
-## Repository Layout
+## Codebase Overview
 
 | Path | Description |
 |------|-------------|
-| `frontend/` | React + Vite SPA (metadata review UI, synthesis form, results view). |
+| `frontend/` | React + Vite SPA (upload flow, metadata editors, results view). |
 | `web_app/` | FastAPI backend: metadata inference, synthesis orchestration, evaluation endpoints. |
-| `method/synthesis/privsyn/` | Authoritative PrivSyn implementation (marginal selection, GUM synthesis, dataset helpers). |
-| `method/api/` | Unified synthesizer interface (`SynthRegistry`, `PrivacySpec`, `RunConfig`) that lets the backend/tests treat every synthesis method the same way. |
-| `method/synthesis/AIM/` | AIM (Adaptive & Iterative Mechanism) adapter + reference implementation. |
-| `method/preprocess_common/` | Shared discretizers (PrivTree, DAWA) and preprocessing pipelines. |
-| `test/` | Pytest suite; `test/e2e/` hosts Playwright end-to-end flows. |
-| `sample_data/` | Small datasets for local trials (`adult.csv.zip`, etc.). |
-| `scripts/` | Convenience scripts for booting servers, benchmarks, and E2E automation. |
+| `method/api/` | Unified interface (`SynthRegistry`, `PrivacySpec`, `RunConfig`) that normalises every synthesis engine. |
+| `method/synthesis/privsyn/` | PrivSyn implementation (marginal selection, GUM synthesis, helpers). |
+| `method/synthesis/AIM/` | AIM adapter and reference engine wired into the shared registry. |
+| `method/preprocess_common/` | Discretisers (PrivTree, DAWA) and preprocessing pipelines shared across methods. |
+| `test/` | Pytest suite; `test/e2e/` houses Playwright browser flows. |
+| `sample_data/` | Fixture datasets for local trials (`adult.csv.zip`, etc.). |
+| `scripts/` | Automation helpers for booting servers, benchmarks, and screenshot capture. |
 
-## Key Components
+### Backend flow
 
-### PrivSyn pipeline
+- `web_app/data_inference.py` infers column metadata and returns draft `domain.json` / `info.json` payloads to the UI.
+- `web_app/synthesis_service.py` rebuilds tabular data, routes execution to the selected engine, and persists session artefacts.
+- `web_app/data_comparison.py` computes evaluation metrics and surfaces them via `/evaluate` and the results screen.
 
-- `web_app/data_inference.py` infers column metadata, builds draft `domain.json` / `info.json`, and returns it to the UI.
-- The frontend collects overrides and posts them back via `/confirm_synthesis`, shaping the inputs for synthesis.
-- `web_app/synthesis_service.py` rebuilds the dataframe, drives `method/synthesis/privsyn/privsyn.py` (marginal selection + GUM), and stores run artifacts.
-- `web_app/data_comparison.py` evaluates outputs with metadata-aware TVD metrics and feeds results to the UI and APIs.
+### Synthesis engines
 
-### AIM adapter
+- PrivSyn lives in `method/synthesis/privsyn/privsyn.py`, combining marginal selection with the GUM generator.
+- AIM’s adapter (`method/synthesis/AIM/adapter.py`) maps the unified `prepare` / `run` hooks onto the original workflow so the backend treats both engines identically.
 
-Method adapters live in `method/synthesis/AIM/adapter.py`; they map the unified interface (`prepare` / `run`) onto the original AIM workflow so the backend and tests treat AIM exactly like PrivSyn via the shared registry in `method/api`.
+### Preprocessing & metadata helpers
 
-### Preprocessing discretizers
-
-- **PrivTree (`method/preprocess_common/privtree.py`)** – recursive binary splits with Laplace noise and inverse transforms.
-- **DAWA (`method/preprocess_common/dawa.py`)** – L1 partitioning utilities used by AIM.
-- Corresponding tests under `test/test_privtree.py` and `test/test_dawa.py` keep these helpers deterministic.
+- **PrivTree (`method/preprocess_common/privtree.py`)** – noisy hierarchical binning with inverse transforms.
+- **DAWA (`method/preprocess_common/dawa.py`)** – adaptive workload partitioning used within AIM.
+- Deterministic tests (`test/test_privtree.py`, `test/test_dawa.py`) ensure these helpers remain stable.
 
 ## Deployment Notes
 
-- **Local:** `./scripts/start_backend.sh` / `./scripts/start_frontend.sh` mirror the commands above; pass `prod` to emit gunicorn builds or copy frontend assets.
-- **Cloud Run:** Build & deploy via Docker (see `gcloud builds submit …` example in the docs section). Remember to set `VITE_API_BASE_URL` in the frontend environment and extend `allow_origins` in `web_app/main.py` for any new domains.
-- **CORS:** Set the environment variable `ADDITIONAL_CORS_ORIGINS` (comma-separated) on your backend deployment to whitelist extra frontend domains such as the Vercel preview/prod URLs.
-- **Temp artifacts:** PrivSyn stores run products under the system temp dir by default. Set `PRIVSYN_DATA_ROOT` / `PRIVSYN_EXP_ROOT` if you need to redirect them (e.g., a workspace cache in CI).
+- `./scripts/start_backend.sh` and `./scripts/start_frontend.sh` wrap the dev commands; pass `prod` to emit gunicorn builds and copy static assets.
+- Cloud Run / container deploys: build via Docker, configure `VITE_API_BASE_URL` for the frontend, and extend `allow_origins` in `web_app/main.py` for any new domains.
+- Free Cloud Run tiers cap CPU/memory/time—large datasets or AIM runs can hit those limits. If you expect heavier jobs, download the repo and run the backend locally instead.
+- CORS extras: set `ADDITIONAL_CORS_ORIGINS` (comma-separated) to whitelist preview/prod frontends without code changes.
+- Temp storage: override `PRIVSYN_DATA_ROOT` / `PRIVSYN_EXP_ROOT` if you need deterministic artefact paths (CI caches, shared volumes, etc.).
 
 ## Contributing
 
-1. Fork & create a branch (`git checkout -b feat/awesome-improvement`).
-2. Keep PRs focused, add/update tests, and run `pytest -q` locally.
+1. Fork & branch (`git checkout -b feat/awesome-improvement`).
+2. Keep diffs focused, add/update tests, and run `pytest -q` before pushing.
 3. Follow Conventional Commits (`feat:`, `fix:`, `chore(scope):`, etc.).
-4. Include screenshots/GIFs for UI changes (drop them under `docs/media/`).
+4. Attach screenshots or GIFs for UI-facing changes (store assets under `docs/media/`).
 
 ## License
 

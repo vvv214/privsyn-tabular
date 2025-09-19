@@ -58,8 +58,6 @@ const CategoricalEditor = ({
     return Array.from(selectedSet).filter((val) => availableCategories.includes(val));
   }, [custom, selected, availableCategories]);
 
-  const clearHelper = () => setHelperMessage(null);
-
   const handleAddCategory = () => {
     const trimmed = newCategory.trim();
     if (!trimmed) {

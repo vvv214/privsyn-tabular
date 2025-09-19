@@ -2,6 +2,11 @@
 
 Welcome to the MkDocs-powered handbook for the PrivSyn tabular synthesis project. Use the navigation on the left to jump straight into frontend internals, backend APIs, testing strategy, deployment notes, and privacy considerations.
 
+PrivSyn’s synthesizer logic builds on two peer-reviewed systems:
+
+- PrivSyn (Zhang et al., USENIX Security 2021) – <https://www.usenix.org/system/files/sec21-zhang-zhikun.pdf>
+- AIM (McKenna et al., PVLDB 2022) – <https://www.vldb.org/pvldb/vol15/p2599-mckenna.pdf>
+
 ## Quick Links
 
 - [Repository README](https://github.com/vvv214/privsyn-tabular#readme) – high-level overview, quick-start commands, and architecture diagrams.

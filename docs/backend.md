@@ -11,6 +11,8 @@
   - Bridges the cached inference bundle to the selected synthesizer.
   - Handles preprocessing (clipping, binning, categorical remap) before handing off to PrivSyn or AIM.
 
+> Algorithm references: PrivSyn follows the approach in [PrivSyn: Differentially Private Data Synthesis](https://www.usenix.org/system/files/sec21-zhang-zhikun.pdf); the AIM adapter implements [The AIM Mechanism for Differentially Private Synthetic Data](https://www.vldb.org/pvldb/vol15/p2599-mckenna.pdf).
+
 ## Key Modules
 
 | Module | Role |

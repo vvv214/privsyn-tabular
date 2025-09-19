@@ -34,6 +34,8 @@ This document outlines the most common deployment paths for the PrivSyn web appl
    - `VITE_API_BASE_URL`: the public URL of the service if you intend to serve the frontend from the same container.
    - `CORS_ALLOW_ORIGINS`: optional comma-separated list of additional origins to append to the defaults in `web_app/main.py`.
 
+> **Free tier constraints:** the Cloud Run free tier grants limited CPU, RAM, and request duration. Large uploads or AIM runs frequently exceed those caps, leading to timeouts or OOM restarts. For heavy workloads, pull the code locally (or to a beefier VM) and run the backend outside Cloud Run.
+
 ### 2.1 Continuous deployment from GitHub Actions
 
 Automated deployments run via `.github/workflows/deploy-cloudrun.yml` whenever `main` is updated. The workflow:
