@@ -48,8 +48,7 @@ def test_preprocessing_pipeline():
 
     # 2. Simulate infer_data_metadata
     print("Simulating data inference...")
-    target_column = 'income' # Assuming 'income' is the target column in adult.csv
-    inferred_data = infer_data_metadata(df_original.copy(), target_column=target_column)
+    inferred_data = infer_data_metadata(df_original.copy())
     X_num_raw = inferred_data['X_num']
     X_cat_raw = inferred_data['X_cat']
     domain_data = inferred_data['domain_data']
@@ -123,3 +122,143 @@ def test_preprocessing_pipeline():
         pytest.fail(f"Error during reverse_data: {e}")
 
     print("--- Test Finished ---")
+
+
+def test_numeric_preprocessing_none_preserves_variation():
+    args_preprocesser = Args(
+        method='privsyn',
+        num_preprocess='none',
+        epsilon=1.0,
+        delta=1e-5,
+        rare_threshold=0.002,
+        dataset='toy'
+    )
+    data_preprocesser = data_preporcesser_common(args_preprocesser)
+
+    X_num_raw = np.array([[0.0], [5.0], [10.0]], dtype=float)
+    domain_data = {
+        'feature': {
+            'type': 'numerical',
+            'size': 3,
+            'bounds': {'min': 0.0, 'max': 10.0},
+        }
+    }
+    info_data = {
+        'num_columns': ['feature'],
+        'cat_columns': [],
+        'n_num_features': 1,
+        'n_cat_features': 0,
+    }
+
+    df_processed, _, _ = data_preprocesser.load_data(
+        X_num_raw=X_num_raw,
+        X_cat_raw=None,
+        rho=0.1,
+        user_domain_data=domain_data,
+        user_info_data=info_data,
+    )
+
+    processed_values = df_processed['feature'].tolist()
+    assert processed_values == pytest.approx([0.0, 0.5, 1.0])
+
+    x_num_rev, x_cat_rev = data_preprocesser.reverse_data(df_processed.values)
+    assert x_cat_rev is None
+    assert x_num_rev.shape == (3, 1)
+    assert x_num_rev[:, 0].tolist() == pytest.approx([0.0, 5.0, 10.0])
+
+
+def test_numeric_edges_transform_into_bins():
+    args_preprocesser = Args(
+        method='privsyn',
+        num_preprocess='uniform_kbins',
+        epsilon=1.0,
+        delta=1e-5,
+        rare_threshold=0.002,
+        dataset='toy'
+    )
+    data_preprocesser = data_preporcesser_common(args_preprocesser)
+
+    X_num_raw = np.array([[1.0], [3.0], [7.9], [12.1]])
+    domain_data = {
+        'feature': {
+            'type': 'numerical',
+            'size': 4,
+            'bounds': {'min': 0.0, 'max': 16.0},
+            'binning': {
+                'method': 'uniform',
+                'bin_count': 4,
+                'edges': [0.0, 4.0, 8.0, 12.0, 16.0],
+            },
+        }
+    }
+    info_data = {
+        'num_columns': ['feature'],
+        'cat_columns': [],
+        'n_num_features': 1,
+        'n_cat_features': 0,
+    }
+
+    df_processed, _, _ = data_preprocesser.load_data(
+        X_num_raw=X_num_raw,
+        X_cat_raw=None,
+        rho=0.1,
+        user_domain_data=domain_data,
+        user_info_data=info_data,
+    )
+
+    processed_vals = df_processed['feature'].tolist()
+    assert processed_vals == [0, 0, 1, 3]
+    assert data_preprocesser.numeric_edges['feature'] == [0.0, 4.0, 8.0, 12.0, 16.0]
+
+
+def test_numeric_edges_none_discretizer_preserve_values():
+    args_preprocesser = Args(
+        method='privsyn',
+        num_preprocess='none',
+        epsilon=1.0,
+        delta=1e-5,
+        rare_threshold=0.002,
+        dataset='toy'
+    )
+    data_preprocesser = data_preporcesser_common(args_preprocesser)
+
+    X_num_raw = np.array([[1.0], [3.0], [7.9], [12.1]])
+    domain_data = {
+        'feature': {
+            'type': 'numerical',
+            'size': 4,
+            'bounds': {'min': 0.0, 'max': 16.0},
+            'binning': {
+                'method': 'uniform',
+                'bin_count': 4,
+                'edges': [0.0, 4.0, 8.0, 12.0, 16.0],
+            },
+        }
+    }
+    info_data = {
+        'num_columns': ['feature'],
+        'cat_columns': [],
+        'n_num_features': 1,
+        'n_cat_features': 0,
+    }
+
+    df_processed, _, _ = data_preprocesser.load_data(
+        X_num_raw=X_num_raw,
+        X_cat_raw=None,
+        rho=0.1,
+        user_domain_data=domain_data,
+        user_info_data=info_data,
+    )
+
+    processed_vals = df_processed['feature'].tolist()
+    # MinMaxScaler scales to [0,1]
+    assert processed_vals == pytest.approx([
+        0.0,
+        (3.0 - 1.0) / (12.1 - 1.0),
+        (7.9 - 1.0) / (12.1 - 1.0),
+        1.0,
+    ])
+    assert data_preprocesser.numeric_edges['feature'] == [0.0, 4.0, 8.0, 12.0, 16.0]
+
+    x_num_rev, _ = data_preprocesser.reverse_data(df_processed.values)
+    assert x_num_rev[:, 0].tolist() == pytest.approx([1.0, 3.0, 7.9, 12.1], rel=1e-5)

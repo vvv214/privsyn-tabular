@@ -11,6 +11,7 @@ import math
 
 import numpy as np
 import pandas as pd
+from method.util.dp_noise import gaussian_noise
 
 from method.synthesis.privsyn.lib_marginal.marg import Marginal
 import method.synthesis.privsyn.config as config
@@ -87,7 +88,7 @@ def calculate_indif(logger, dataset, dataset_name, rho):
             indif_index += 1
 
     if rho > 0.0:
-        noise = np.random.normal(scale=np.sqrt(8 * indif_df.shape[0] / rho), size=indif_df.shape[0])
+        noise = gaussian_noise(scale=np.sqrt(8 * indif_df.shape[0] / rho), size=indif_df.shape[0])
         indif_df.error += noise
     elif rho < 0.0:
         raise ValueError("Privacy budget rho cannot be negative.")

@@ -40,7 +40,6 @@ def test_full_flow_confirm_synthesis_small():
         "update_rate_method": "U4",
         "update_rate_initial": "1.0",
         "update_iterations": "2",
-        "target_column": "y_attr",
     }
 
     files = {"data_file": ("mini.csv", io.BytesIO(csv_bytes), "text/csv")}

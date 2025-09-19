@@ -128,31 +128,37 @@ def load_dataframe_from_uploaded_file(file: UploadFile) -> pd.DataFrame:
     If a ZIP file, it extracts the first CSV file found within.
     """
     if file.filename.endswith('.csv'):
-        return pd.read_csv(io.StringIO(file.file.read().decode('utf-8')))
+        file.file.seek(0)
+        text_stream = io.TextIOWrapper(file.file, encoding='utf-8')
+        try:
+            df = pd.read_csv(text_stream)
+        finally:
+            text_stream.detach()
+        return df
     elif file.filename.endswith('.zip'):
-        with zipfile.ZipFile(io.BytesIO(file.file.read()), 'r') as zf:
+        file.file.seek(0)
+        with zipfile.ZipFile(file.file, 'r') as zf:
             csv_files = [f for f in zf.namelist() if f.endswith('.csv')]
             if not csv_files:
                 raise ValueError("No CSV file found inside the ZIP archive.")
             # Take the first CSV file found
             with zf.open(csv_files[0]) as csv_file:
-                return pd.read_csv(io.StringIO(csv_file.read().decode('utf-8')))
+                return pd.read_csv(io.TextIOWrapper(csv_file, encoding='utf-8'))
     else:
         raise ValueError("Unsupported file type. Please upload a CSV or ZIP file.")
 
-def infer_data_metadata(df: pd.DataFrame, target_column: str = 'y_attr') -> dict:
+def infer_data_metadata(df: pd.DataFrame) -> dict:
     """
-    Infers data types, creates X_cat, X_num, y arrays, and generates domain.json and info.json content.
+    Infers data types, slices out numeric/categorical matrices, and generates
+    `domain.json` / `info.json` content for the entire uploaded table.
 
     Args:
         df (pd.DataFrame): The input DataFrame.
-        target_column (str): The name of the target column.
 
     Returns:
         dict: A dictionary containing:
-            - 'X_cat': numpy array of categorical features.
-            - 'X_num': numpy array of numerical features.
-            - 'y': numpy array of the target variable.
+            - 'X_cat': numpy array of categorical features (or None).
+            - 'X_num': numpy array of numerical features (or None).
             - 'domain_data': Dictionary for domain.json.
             - 'info_data': Dictionary for info.json.
     """
@@ -163,17 +169,13 @@ def infer_data_metadata(df: pd.DataFrame, target_column: str = 'y_attr') -> dict
     info_data = {
         "name": "UploadedDataset", # Placeholder, can be refined later
         "id": "uploaded-dataset-default", # Placeholder
-        "task_type": "unknown", # Default, as target column is ignored
+        "task_type": "unknown",
         "n_num_features": 0,
         "n_cat_features": 0,
-        "n_classes": 0, # No target column, so n_classes is 0
         "train_size": len(df),
         "test_size": 0, # Cannot infer from single file
         "val_size": 0 # Cannot infer from single file
     }
-
-    if target_column in df.columns:
-        df = df.drop(columns=[target_column])
 
     num_feature_count = 0
     cat_feature_count = 0

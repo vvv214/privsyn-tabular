@@ -92,14 +92,20 @@ class data_preporcesser_common():
                         X_num[:, idx] = np.maximum(X_num[:, idx], min_bound)
                     if max_bound is not None:
                         X_num[:, idx] = np.minimum(X_num[:, idx], max_bound)
-            
+
+            raw_numeric_for_binning = X_num.copy()
+
             if num_prep != 'none':
                 ord = False if self.args.method in ['rap', 'gsd'] else True
                 self.num_encoder = discretizer(num_prep, num_divide * 0.1 * rho, ord=ord) # return an ordinal encoded discrete data
+                X_num = self.num_encoder.fit_transform(X_num).astype(int)
             else:
                 self.num_encoder = sklearn.preprocessing.MinMaxScaler(feature_range=(0,1))
-            X_num = self.num_encoder.fit_transform(X_num).astype(int)
+                X_num = self.num_encoder.fit_transform(X_num)
+                raw_numeric_for_binning = None
             self.num_col = X_num.shape[1] if X_num.ndim > 1 and X_num.shape[1] > 0 else 0
+        else:
+            raw_numeric_for_binning = None
         if X_cat is not None:
             self.cat_encoder = rare_merger(cat_divide * 0.1 * rho, rare_threshold=rare_threshold, output_type=self.cat_output_type) #by default return ordinal encoded data
             X_cat = self.cat_encoder.fit_transform(X_cat).astype(int)
@@ -108,8 +114,7 @@ class data_preporcesser_common():
         self.logger.debug("Defining domain_for_clipping")
 
         # Apply user-provided binning edges
-        if X_num is not None and num_col_names_actual:
-            X_num = X_num.astype(float)
+        if num_col_names_actual:
             for idx, col_name in enumerate(num_col_names_actual):
                 domain_entry = domain.get(col_name, {}) if isinstance(domain, dict) else {}
                 binning_info = domain_entry.get('binning') if isinstance(domain_entry, dict) else None
@@ -117,9 +122,10 @@ class data_preporcesser_common():
                 if edges:
                     edges_array = np.array(edges, dtype=float)
                     if edges_array.ndim == 1 and edges_array.size >= 2:
-                        bins = np.digitize(X_num[:, idx], edges_array[1:-1], right=False).astype(int)
-                        X_num[:, idx] = bins
                         self.numeric_edges[col_name] = edges_array.tolist()
+                        if raw_numeric_for_binning is not None and num_prep != 'none':
+                            bins = np.digitize(raw_numeric_for_binning[:, idx], edges_array[1:-1], right=False).astype(int)
+                            X_num[:, idx] = bins
 
         # Construct df using actual column names
         if X_num is None:
@@ -163,23 +169,28 @@ class data_preporcesser_common():
             
             if self.num_encoder is not None:
                 try:
-                    # Only apply clipping if it's a KBinsDiscretizer (i.e., num_prep was 'uniform_kbins')
-                    if isinstance(self.num_encoder, discretizer) and hasattr(self.num_encoder, 'encoder') and hasattr(self.num_encoder.encoder, 'n_bins_'):
-                        x_num_clipped = x_num.copy() # Make a copy before clipping
-                        self.logger.debug(f"x_num before clip - min: {x_num_clipped.min()}, max: {x_num_clipped.max()}")
-                        max_bin_index = len(self.num_encoder.encoder.categories_[0]) - 2 # Correct max ordinal index
-                        self.logger.debug(f"max_bin_index: {max_bin_index}")
-                        x_num_clipped = np.clip(x_num_clipped, 0, max_bin_index)
-                        self.logger.debug(f"x_num after clip - min: {x_num_clipped.min()}, max: {x_num_clipped.max()}")
-                        x_num = x_num_clipped # Use the clipped copy
+                    if isinstance(self.num_encoder, discretizer):
+                        # Only apply clipping if it's a KBinsDiscretizer (i.e., num_prep was 'uniform_kbins')
+                        if hasattr(self.num_encoder, 'encoder') and hasattr(self.num_encoder.encoder, 'n_bins_'):
+                            x_num_clipped = x_num.copy() # Make a copy before clipping
+                            self.logger.debug(f"x_num before clip - min: {x_num_clipped.min()}, max: {x_num_clipped.max()}")
+                            max_bin_index = len(self.num_encoder.encoder.categories_[0]) - 2 # Correct max ordinal index
+                            self.logger.debug(f"max_bin_index: {max_bin_index}")
+                            x_num_clipped = np.clip(x_num_clipped, 0, max_bin_index)
+                            self.logger.debug(f"x_num after clip - min: {x_num_clipped.min()}, max: {x_num_clipped.max()}")
+                            x_num = x_num_clipped # Use the clipped copy
 
-                    # Ensure x_num is a contiguous integer array before inverse_transform
-                    x_num = np.ascontiguousarray(x_num).astype(int)
-                    x_num = self.num_encoder.inverse_transform(x_num).astype(float)
+                        # Ensure x_num is a contiguous integer array before inverse_transform
+                        x_num = np.ascontiguousarray(x_num).astype(int)
+                        x_num = self.num_encoder.inverse_transform(x_num).astype(float)
+                    else:
+                        # MinMaxScaler and other continuous transformers expect float input
+                        x_num = np.ascontiguousarray(x_num).astype(float)
+                        x_num = self.num_encoder.inverse_transform(x_num).astype(float)
                 except IndexError as e:
                     self.logger.warning(f"IndexError during numerical inverse_transform. Returning None for numerical data. Error: {e}")
                     x_num = None # Return None for numerical data if inverse_transform fails
-            if x_num is not None and self.numeric_edges:
+            if x_num is not None and self.numeric_edges and isinstance(self.num_encoder, discretizer):
                 for idx, col_name in enumerate(self.num_col_names):
                     edges = self.numeric_edges.get(col_name)
                     if edges:

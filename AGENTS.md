@@ -33,3 +33,27 @@
 - Configure API base URL via `VITE_API_BASE_URL`; adjust backend CORS origins in `web_app/main.py` for new domains.
 - Keep temporary synthesis outputs in git-ignored `temp_synthesis_output/` and avoid adding large private datasets.
 - PrivSyn temp artifacts default to the system temp dir; override via `PRIVSYN_DATA_ROOT` / `PRIVSYN_EXP_ROOT` when automation needs deterministic paths.
+
+## Latest Fixes & Notes
+- Fixed MinMaxScaler casting so `num_preprocess='none'` preserves numeric variation; see `test/test_preprocessing.py::test_numeric_preprocessing_none_preserves_variation`.
+- Respected user-specified numeric bin edges when preprocessing so post-transform discretisation matches confirmed domains (`method/preprocess_common/load_data_common.py`).
+- PrivSyn now seeds via context-managed RNG to avoid mutating global NumPy state (`method/synthesis/privsyn/native.py`); regression covered in `test/test_privsyn_rng.py`.
+- Frontend sample gating only bypasses uploads when the dataset name is exactly `adult`; unit tested in `frontend/src/components/SynthesisForm.test.jsx`.
+- Session store supports eviction callbacks, enabling automatic temp-dir cleanup for expired inference sessions (`web_app/session_store.py`).
+- CSV/ZIP uploads stream directly from the FastAPI `UploadFile` object, avoiding eager `read()` into memory (`web_app/data_inference.py`).
+- API no longer requires or strips a `target_column`; the entire uploaded table participates in metadata inference and synthesis.
+- Centralised DP noise helpers live in `method/util/dp_noise.py`; PrivSyn, preprocessing discretisers, PrivTree, PrivMRF, and GEM now rely on these wrappers for all DP noise draws.
+- AIM fit/sample now use the same temporary NumPy seed context as PrivSyn to avoid mutating global RNG state (`method/synthesis/AIM/native.py`).
+- Server-side validation rejects mismatched numeric bin edges/bin counts so UI overrides cannot desynchronise run configs (`web_app/main.py`).
+
+### Suggested Test Commands
+- `pytest -q test/test_preprocessing.py test/test_privsyn_rng.py test/test_session_store.py test/test_metadata_overrides.py`
+- `cd frontend && npm test -- SynthesisForm.test.jsx`
+
+## Working Mental Model
+- **User flow**: React form (`SynthesisForm` → `MetadataConfirmation` → `ResultsDisplay`) collects inputs, posts to `/synthesize`, confirms metadata, then downloads CSV and triggers `/evaluate` for TVD metrics.
+- **Inference phase**: `/synthesize` loads CSV/ZIP, infers column domain info via `web_app.data_inference`, writes parquet + metadata to a temp dir stored in `SessionStore` until the user confirms or TTL expires.
+- **Confirmation & synthesis**: `/confirm_synthesis` merges user overrides, rebuilds numeric/categorical matrices, persists run artifacts, and calls `run_synthesis` which dispatches through `method.api.SynthRegistry` (default PrivSyn/AIM adapters).
+- **PrivSyn adapter**: `method/synthesis/privsyn/native.py` preprocesses with `data_preporcesser_common`, constructs the PrivSyn core, and samples via `FittedPrivSyn` while keeping RNG state scoped.
+- **Evaluation**: `/evaluate` reloads the synthesized CSV alongside cached original data, computing TVD by column (numeric bins honored when provided).
+- **Session lifecycle**: `SessionStore` imposes TTL, runs eviction callbacks to clean temp directories, and keeps synthesized outputs available for download/evaluation for six hours.

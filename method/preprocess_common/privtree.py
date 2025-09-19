@@ -8,9 +8,7 @@
 
 import numpy as np
 import pandas as pd
-
-def laplace_noise(Lambda):
-    return np.random.laplace(loc=0, scale=Lambda)
+from method.util.dp_noise import laplace_noise
 
 def get_domain_subdomains(domain):
     

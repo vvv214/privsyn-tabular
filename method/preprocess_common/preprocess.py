@@ -12,9 +12,7 @@ import sklearn.preprocessing
 from copy import deepcopy
 from .privtree import privtree
 from .dawa import dawa
-
-def laplace_noise(Lambda):
-    return np.random.laplace(loc=0, scale=Lambda)
+from method.util.dp_noise import laplace_noise
 
 class discretizer():
     def __init__(self, bins_method, rho, bin_number=100, ord = True):

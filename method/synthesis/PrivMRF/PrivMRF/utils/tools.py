@@ -15,6 +15,7 @@ import cupy as cp
 import json
 from ..domain import Smoother
 from bisect import bisect_left
+from method.util.dp_noise import gaussian_noise, laplace_noise
 
 mp.mp.dps = 1000
 
@@ -59,7 +60,8 @@ def dp_1norm(data, domain, index_list, marginal, noise, to_cpu=False):
     else:
         value = marginal.values
     result1 = np.sum(np.abs(value - histogram))
-    result2 =  (result1 + np.random.normal(scale=noise)) / 2 /len(data)
+    noisy = gaussian_noise(scale=noise, size=1).item()
+    result2 = (result1 + noisy) / (2 * len(data))
     return result1 / 2 /len(data) , result2
 
 def print_data(np_data):
@@ -98,7 +100,7 @@ def dp_TVD(TVD_map, data, domain, index_list, noise):
 
         if gpu:
             TVD = TVD.item()
-        noisy_TVD = TVD + np.random.normal(scale=noise)
+        noisy_TVD = TVD + gaussian_noise(scale=noise, size=1).item()
 
         TVD_map[index_list] = [TVD, noisy_TVD]
         # print(index_list, TVD)
@@ -115,7 +117,7 @@ def dp_mutual_info(MI_map, entropy_map, data, domain, index_list, noise):
         MI = +dp_entropy(entropy_map, data, domain, [index_list[0]], 0)[0]
         MI = +dp_entropy(entropy_map, data, domain, [index_list[1]], 0)[0]
 
-        noisy_MI = MI + np.random.normal(scale=noise)
+        noisy_MI = MI + gaussian_noise(scale=noise, size=1).item()
 
         MI_map[index_list] = [MI, noisy_MI]
         # print(index_list, MI)
@@ -138,7 +140,7 @@ def dp_entropy(entropy_map, data, domain, index_list, noise):
             value, counts = np.unique(data[:, index_list], return_counts=True, axis=0)
             entropy = stats.entropy(counts)
 
-        noisy_entropy = entropy + np.random.normal(scale=noise)
+        noisy_entropy = entropy + gaussian_noise(scale=noise, size=1).item()
         if entropy < 0:
             entropy = 0
         entropy_map[index_list] = [entropy, noisy_entropy]
@@ -152,9 +154,9 @@ def dp_marginal_list(data, domain, marginal_list, noise, return_factor=True, val
         temp_domain = domain.project(marginal)
         histogram, _ = np.histogramdd(data[:, marginal], bins=temp_domain.edge())
         if noise_type == 'normal':
-            histogram += np.random.normal(scale=noise, size=temp_domain.shape)
+            histogram += gaussian_noise(scale=noise, size=temp_domain.shape)
         elif noise_type == 'Laplace':
-            histogram += np.random.laplace(scale=noise, size=temp_domain.shape)
+            histogram += laplace_noise(scale=noise, size=temp_domain.shape)
         else:
             print('invalid noise type')
             exit(-1)

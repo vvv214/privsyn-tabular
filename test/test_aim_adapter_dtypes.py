@@ -27,7 +27,6 @@ def test_aim_adapter_numeric_dtypes():
         'cat_columns': ['z'],
         'n_num_features': 2,
         'n_cat_features': 1,
-        'n_classes': 0,
         'train_size': 60,
         'test_size': 0,
         'val_size': 0,

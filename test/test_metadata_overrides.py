@@ -50,7 +50,6 @@ def _base_form_values(**overrides):
         "update_rate_method": "U4",
         "update_rate_initial": "1.0",
         "update_iterations": "2",
-        "target_column": "y_attr",
     }
     form.update({k: str(v) for k, v in overrides.items()})
     return form
@@ -200,6 +199,39 @@ def test_metadata_override_round_trip(tmp_path, monkeypatch):
         shutil.rmtree(run_dir)
     data_storage.clear()
 
+
+def test_confirm_synthesis_rejects_mismatched_edges(monkeypatch):
+    data_storage.clear()
+    inferred_data_temp_storage.clear()
+    client = TestClient(app)
+    _fake_run_synthesis(monkeypatch)
+
+    df = pd.DataFrame({"value": [1, 2, 3]})
+    synth_form = _base_form_values(n_sample=5)
+    payload = _post_synthesize(client, synth_form, df)
+
+    confirmed_domain = payload["domain_data"]
+    confirmed_info = payload["info_data"]
+
+    numeric = confirmed_domain["value"]
+    numeric["type"] = "numerical"
+    numeric["binning"] = {
+        "method": "uniform",
+        "bin_count": 3,
+        "edges": [0, 5],  # only two edges -> mismatch with bin_count
+    }
+
+    confirm_form = {
+        **synth_form,
+        "unique_id": payload["unique_id"],
+        "confirmed_domain_data": json.dumps(confirmed_domain),
+        "confirmed_info_data": json.dumps(confirmed_info),
+    }
+
+    response = client.post("/confirm_synthesis", data=confirm_form)
+    assert response.status_code == 400
+    body = response.json()
+    assert body["detail"]["error"] == "invalid_binning"
 
 @pytest.mark.slow
 def test_categorical_resample_strategy_persists_domain(monkeypatch):

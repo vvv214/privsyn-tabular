@@ -41,6 +41,7 @@ function App() {
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [inferredDomainData, setInferredDomainData] = useState(null);
   const [inferredInfoData, setInferredInfoData] = useState(null);
+  const isSampleDataset = (formData.dataset_name || '').trim().toLowerCase() === 'adult';
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -141,10 +142,9 @@ function App() {
 
     const data = new FormData();
     Object.entries(formData).forEach(([key, value]) => data.append(key, value));
-    data.append('target_column', 'y_attr');
     if (dataFile) data.append('data_file', dataFile);
 
-    if (!dataFile && !formData.dataset_name.includes('adult')) {
+    if (!dataFile && !isSampleDataset) {
       setError('Please upload a data file or load the sample dataset.');
       setMessage('');
       setLoading(false);

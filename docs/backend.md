@@ -42,6 +42,7 @@ The backend dispatcher (`web_app/methods_dispatcher.py`) and tests such as `test
 - Expects multipart form (fields documented in `test/test_api_contract.py`).
 - For sample runs, omit the file and set `dataset_name=adult`.
 - Stores the uploaded DataFrame and inferred metadata under a temporary UUID in memory.
+- All columns from the uploaded table participate in metadata inference; the API no longer accepts or drops a distinct target column.
 
 ### POST `/confirm_synthesis`
 - Requires the `unique_id` returned by `/synthesize`.

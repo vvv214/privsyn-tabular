@@ -4,6 +4,7 @@ import pickle
 import argparse
 
 import numpy as np
+import torch
 from torch import optim
 import torch.nn.functional as F
 import sklearn.preprocessing
@@ -14,6 +15,7 @@ from method.synthesis.GEM.Util.gan.ctgan.models import Generator
 from method.synthesis.GEM.Util.gan.ctgan.transformer import DataTransformer
 from method.synthesis.GEM.mbi import Dataset, Domain
 from evaluator.eval_tvd import tvd_divide
+from method.util.dp_noise import gaussian_noise
 
 
 def get_syndata_errors(gem, query_manager, num_samples, domain, real_answers, resample=False):
@@ -183,7 +185,7 @@ class GEM(object):
 
             # get noisy measurements
             real_answer = real_answers[max_query_idx]
-            real_answer += np.random.normal(loc=0, scale=sensitivity / (eps0 * (1-alpha)))
+            real_answer += gaussian_noise(scale=sensitivity / (eps0 * (1 - alpha)), size=1).item()
             real_answer = torch.clamp(real_answer, 0, 1)
 
             # keep track of past queries

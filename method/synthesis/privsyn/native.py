@@ -9,7 +9,7 @@ from method.api.base import FittedSynth, PrivacySpec, RunConfig, Synthesizer
 from method.api.utils import enforce_dataframe_schema, split_df_by_type
 from method.synthesis.privsyn.privsyn import PrivSyn, add_default_params
 from method.preprocess_common.load_data_common import data_preporcesser_common
-from method.util.rho_cdp import cdp_rho
+from method.util import cdp_rho, temporary_numpy_seed
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +23,7 @@ class FittedPrivSyn(FittedSynth):
         original_dtypes: Dict[str, Any],
         privacy: PrivacySpec,
         config: RunConfig,
+        base_seed: Optional[int],
     ):
         self._privsyn_generator = privsyn_generator
         self._preprocesser = preprocesser
@@ -30,6 +31,7 @@ class FittedPrivSyn(FittedSynth):
         self._original_dtypes = original_dtypes
         self._privacy = privacy
         self._config = config
+        self._base_seed = base_seed
 
     @property
     def info(self) -> Dict[str, Any]:
@@ -43,10 +45,11 @@ class FittedPrivSyn(FittedSynth):
         return info_dict
 
     def sample(self, n: int, seed: Optional[int] = None) -> pd.DataFrame:
-        if seed is not None:
-            self._privsyn_generator.set_seed(seed)
-
-        self._privsyn_generator.syn(n, self._preprocesser, parent_dir=None)
+        seed_to_use = seed if seed is not None else self._base_seed
+        with temporary_numpy_seed(seed_to_use):
+            if seed_to_use is not None:
+                self._privsyn_generator.set_seed(seed_to_use)
+            self._privsyn_generator.syn(n, self._preprocesser, parent_dir=None)
         out: pd.DataFrame = self._privsyn_generator.synthesized_df
         info = self._user_info
         num_cols = info.get("num_columns", []) or []
@@ -131,8 +134,6 @@ class PrivSynSynthesizer(Synthesizer):
         config: Optional[RunConfig] = None,
     ) -> FittedSynth:
         config = config or RunConfig()
-        if config.random_state is not None:
-            np.random.seed(config.random_state)
 
         extra_config = (config.extra or {}).copy()
 
@@ -187,7 +188,12 @@ class PrivSynSynthesizer(Synthesizer):
         args_dict = vars(args_obj)
 
         privsyn_generator = PrivSyn(args_dict, df_processed, domain_sizes, total_rho)
-        privsyn_generator.marginal_selection()
+
+        fit_seed = config.random_state
+        with temporary_numpy_seed(fit_seed):
+            if fit_seed is not None:
+                privsyn_generator.set_seed(fit_seed)
+            privsyn_generator.marginal_selection()
 
         return FittedPrivSyn(
             privsyn_generator=privsyn_generator,
@@ -196,4 +202,6 @@ class PrivSynSynthesizer(Synthesizer):
             original_dtypes=df.dtypes.to_dict(),
             privacy=privacy,
             config=config,
+            base_seed=fit_seed,
         )
+

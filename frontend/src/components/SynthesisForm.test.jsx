@@ -61,4 +61,18 @@ describe('SynthesisForm', () => {
     expect(screen.getByRole('button', { name: /load sample/i })).toBeDisabled();
     expect(screen.getByRole('button', { name: /inferring/i })).toBeDisabled();
   });
+
+  it('requires file upload only when not using the bundled sample', () => {
+    const { props } = buildProps({
+      formData: { dataset_name: 'adult' },
+    });
+    const { rerender } = render(<SynthesisForm {...props} />);
+
+    const fileInput = screen.getByLabelText(/upload dataset/i);
+    expect(fileInput).not.toBeRequired();
+
+    const updatedProps = buildProps({ formData: { dataset_name: 'adult_backup' } }).props;
+    rerender(<SynthesisForm {...updatedProps} />);
+    expect(screen.getByLabelText(/upload dataset/i)).toBeRequired();
+  });
 });

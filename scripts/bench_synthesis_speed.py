@@ -37,7 +37,7 @@ def main():
 
     print("[bench] Inferring metadata")
     inf0 = time.time()
-    meta = infer_data_metadata(df_orig.copy(), target_column='income')
+    meta = infer_data_metadata(df_orig.copy())
     X_num, X_cat = meta['X_num'], meta['X_cat']
     domain_data, info_data = meta['domain_data'], meta['info_data']
     inf1 = time.time()

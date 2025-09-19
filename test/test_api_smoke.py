@@ -44,7 +44,6 @@ def test_synthesize_debug_mode():
         "update_rate_method": "U4",
         "update_rate_initial": "1.0",
         "update_iterations": "5",
-        "target_column": "y_attr",
     }
     r = client.post("/synthesize", data=data)
     assert r.status_code == 200

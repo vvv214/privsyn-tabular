@@ -20,6 +20,7 @@ from method.synthesis.privsyn.lib_marginal.marg_determine import marginal_select
 from method.synthesis.privsyn.lib_dataset.data_store import DataStore
 from method.synthesis.privsyn.lib_dataset.domain import Domain
 from method.synthesis.privsyn.lib_synthesize.GUM import GUM_Mechanism
+from method.util.dp_noise import gaussian_noise
 
 class PrivSyn():
     def __init__(self, args, df, domain, rho):
@@ -129,7 +130,7 @@ class PrivSyn():
     
     def anonymize_marg(self, marg, rho=0.0):
         sigma = math.sqrt(self.args['marg_add_sensitivity'] ** 2 / (2.0 * rho))
-        noise = np.random.normal(scale=sigma, size=marg.count.shape[0]) # Use actual size of marg.count
+        noise = gaussian_noise(scale=sigma, size=marg.count.shape[0])
         marg.count = marg.count.astype(float) # Convert to float before adding noise
         marg.count += noise
 

@@ -335,11 +335,11 @@ const MetadataConfirmation = ({ uniqueId, inferredDomainData, inferredInfoData, 
                                 </div>
                                 <div className="col-md-6 mb-3 d-flex justify-content-center align-items-center flex-column">
                                     <label htmlFor="info_n_num_features" className="form-label">Numerical Features</label>
-                                    <input type="number" id="info_n_num_features" className="form-control" value={infoData.n_num_features || 0} onChange={(e) => handleInfoChange('n_num_features', parseInt(e.target.value) || 0)} />
+                                    <input type="number" id="info_n_num_features" className="form-control" value={infoData.n_num_features || 0} readOnly />
                                 </div>
                                 <div className="col-md-6 mb-3 d-flex justify-content-center align-items-center flex-column">
                                     <label htmlFor="info_n_cat_features" className="form-label">Categorical Features</label>
-                                    <input type="number" id="info_n_cat_features" className="form-control" value={infoData.n_cat_features || 0} onChange={(e) => handleInfoChange('n_cat_features', parseInt(e.target.value) || 0)} />
+                                    <input type="number" id="info_n_cat_features" className="form-control" value={infoData.n_cat_features || 0} readOnly />
                                 </div>
                                 <div className="col-md-6 mb-3 d-flex justify-content-center align-items-center flex-column">
                                     <label htmlFor="info_train_size" className="form-label">Dataset Size</label>

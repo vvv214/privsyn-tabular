@@ -72,6 +72,8 @@ Visit `http://127.0.0.1:5174`. The frontend defaults to `http://127.0.0.1:8001` 
 4. Download the resulting CSV or explore the preview table.
 5. Want a quick preview without running anything? Check `docs/sample_output/` for a tiny synthetic CSV and matching metrics JSON.
 
+> **Note:** The backend now treats every column in the uploaded table as part of the feature space—no target column is required or stripped automatically.
+
 ### Refresh UI screenshots (optional)
 
 We keep the screenshots in `docs/media/` up to date via Playwright:

@@ -22,6 +22,19 @@ from .session_store import SessionStore
 
 logger = logging.getLogger(__name__)
 
+
+def _cleanup_temp_artifacts(_key: str, payload: dict) -> None:
+    temp_dir = payload.get("temp_dir") if isinstance(payload, dict) else None
+    if not temp_dir:
+        return
+    if os.path.isdir(temp_dir):
+        try:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+            logger.info("Removed expired inference temp directory %s", temp_dir)
+        except Exception:  # pragma: no cover - defensive logging
+            logger.exception("Failed to remove temporary directory %s", temp_dir)
+
+
 def log_memory_usage(stage: str):
     process = psutil.Process(os.getpid())
     mem_info = process.memory_info()
@@ -67,6 +80,50 @@ def _dedupe_with_lookup(values):
             ordered.append(label)
     return ordered, lookup
 
+
+def _validate_numeric_domain(domain_data: dict) -> None:
+    for column, config in (domain_data or {}).items():
+        if not isinstance(config, dict) or config.get("type") != "numerical":
+            continue
+        binning = config.get("binning") if isinstance(config.get("binning"), dict) else {}
+        edges = binning.get("edges")
+        bin_count = binning.get("bin_count")
+        if edges is not None:
+            if not isinstance(edges, list) or len(edges) < 2:
+                raise HTTPException(
+                    status_code=400,
+                    detail=_error_payload("invalid_binning", f"Column '{column}' has invalid bin edges."),
+                )
+            if any(edges[i] >= edges[i + 1] for i in range(len(edges) - 1)):
+                raise HTTPException(
+                    status_code=400,
+                    detail=_error_payload("invalid_binning", f"Column '{column}' edges must be strictly increasing."),
+                )
+            inferred_count = len(edges) - 1
+            if bin_count is not None and int(bin_count) != inferred_count:
+                raise HTTPException(
+                    status_code=400,
+                    detail=_error_payload(
+                        "invalid_binning",
+                        f"Column '{column}' bin_count ({bin_count}) does not match edges length ({len(edges)}).",
+                    ),
+                )
+            binning["bin_count"] = inferred_count
+        elif bin_count is not None:
+            try:
+                bin_count_int = int(bin_count)
+            except (TypeError, ValueError):
+                raise HTTPException(
+                    status_code=400,
+                    detail=_error_payload("invalid_binning", f"Column '{column}' bin_count must be an integer."),
+                )
+            if bin_count_int <= 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail=_error_payload("invalid_binning", f"Column '{column}' bin_count must be positive."),
+                )
+            binning["bin_count"] = bin_count_int
+        config["binning"] = binning
 
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -115,8 +172,35 @@ INFERRED_SESSION_TTL_SECONDS = 30 * 60  # 30 minutes
 SYNTHESIS_SESSION_TTL_SECONDS = 6 * 60 * 60  # 6 hours
 
 # These stores behave like dictionaries but enforce TTL eviction.
-inferred_data_temp_storage = SessionStore(ttl_seconds=INFERRED_SESSION_TTL_SECONDS)
-data_storage = SessionStore(ttl_seconds=SYNTHESIS_SESSION_TTL_SECONDS)
+inferred_data_temp_storage = SessionStore(
+    ttl_seconds=INFERRED_SESSION_TTL_SECONDS,
+    on_evict=_cleanup_temp_artifacts,
+)
+
+
+def _cleanup_synthesis_artifacts(_key: str, payload: dict) -> None:
+    if not isinstance(payload, dict):
+        return
+    candidates = []
+    run_dir = payload.get("run_dir")
+    if isinstance(run_dir, str):
+        candidates.append(run_dir)
+    synth_path = payload.get("synthesized_csv_path")
+    if isinstance(synth_path, str):
+        candidates.append(os.path.dirname(synth_path))
+    for candidate in candidates:
+        if candidate and os.path.isdir(candidate):
+            try:
+                shutil.rmtree(candidate, ignore_errors=True)
+                logger.info("Removed expired synthesis artifacts at %s", candidate)
+            except Exception:  # pragma: no cover - defensive logging
+                logger.exception("Failed to remove synthesis directory %s", candidate)
+
+
+data_storage = SessionStore(
+    ttl_seconds=SYNTHESIS_SESSION_TTL_SECONDS,
+    on_evict=_cleanup_synthesis_artifacts,
+)
 
 @app.get("/")
 async def read_root():
@@ -162,7 +246,7 @@ async def synthesize_data(
     update_rate_initial: float = Form(1.0),
     update_iterations: int = Form(50),
     data_file: UploadFile | None = File(None, description="Upload your dataset as a CSV or ZIP file."),
-    target_column: str = Form('y_attr', description="Name of the target column in your CSV. Defaults to 'y_attr'."),):
+):
     logger.info(f"synthesize_data received: method={method}, dataset_name={dataset_name}, epsilon={epsilon}, delta={delta}, num_preprocess={num_preprocess}, rare_threshold={rare_threshold}, n_sample={n_sample}, consist_iterations={consist_iterations}, update_iterations={update_iterations}")
     """
     Receives an uploaded CSV or ZIP file, infers metadata,
@@ -190,7 +274,6 @@ async def synthesize_data(
             "df_path": df_path,
             "domain_data": domain_stub,
             "info_data": info_stub,
-            "target_column": target_column,
             "synthesis_params": {
                 "method": method,
                 "dataset_name": dataset_name,
@@ -246,7 +329,7 @@ async def synthesize_data(
 
         # 2. Infer data metadata
         logger.info("Attempting to infer data metadata.")
-        inferred_data = infer_data_metadata(df, target_column=target_column)
+        inferred_data = infer_data_metadata(df)
         log_memory_usage("synthesize_data_after_metadata_inference")
         logger.info("Data metadata inferred successfully.")
 
@@ -266,7 +349,6 @@ async def synthesize_data(
             "df_path": df_path,
             "domain_data": inferred_data['domain_data'],
             "info_data": inferred_data['info_data'],
-            "target_column": target_column,
             "synthesis_params": {
                 "method": method,
                 "dataset_name": dataset_name,
@@ -346,7 +428,6 @@ async def confirm_synthesis(
     logger.info(f"Loaded df from {df_path}")
     log_memory_usage("confirm_synthesis_after_df_load")
 
-    target_column = temp_data["target_column"]
     synthesis_params = temp_data["synthesis_params"] # Retrieve synthesis parameters
 
     # Parse the JSON strings back into dictionaries
@@ -359,6 +440,7 @@ async def confirm_synthesis(
         ) from exc
     if not isinstance(domain_data, dict):
         raise HTTPException(status_code=400, detail=_error_payload("invalid_payload", "confirmed_domain_data must be a JSON object."))
+    _validate_numeric_domain(domain_data)
 
     try:
         info_data = json.loads(confirmed_info_data)
@@ -599,6 +681,7 @@ async def confirm_synthesis(
             "rare_threshold": synthesis_params["rare_threshold"],
             "domain_data": domain_data,
             "info_data": info_data,
+            "run_dir": synthesis_run_dir,
         })
         logger.info(f"Current data_storage keys: {data_storage.keys()}")
         log_memory_usage("confirm_synthesis_before_return")
@@ -618,7 +701,7 @@ async def confirm_synthesis(
         )
     finally:
         if os.path.exists(temp_dir):
-            shutil.rmtree(temp_dir)
+            shutil.rmtree(temp_dir, ignore_errors=True)
             logger.info(f"Cleaned up temporary directory: {temp_dir}")
 
 @app.get("/download_synthesized_data/{session_id}")

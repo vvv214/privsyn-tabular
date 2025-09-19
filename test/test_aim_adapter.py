@@ -26,7 +26,6 @@ def _build_simple_df(n=60):
         'cat_columns': ['cat_c'],
         'n_num_features': 2,
         'n_cat_features': 1,
-        'n_classes': 0,
         'train_size': n,
         'test_size': 0,
         'val_size': 0,

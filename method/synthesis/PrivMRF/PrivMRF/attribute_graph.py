@@ -10,6 +10,7 @@ import json
 import pickle
 from .factor import Factor
 import time
+from method.util.dp_noise import gaussian_noise
 
 class Status:
     def __init__(self, graph, adj):
@@ -54,7 +55,7 @@ class AttributeGraph:
         #     self.config['max_parameter_size'] = 3e7
 
         data_num_noise = math.sqrt(1/self.privacy_budget*0.01)
-        self.data_num = int(len(self.data) + np.random.normal(scale=data_num_noise))
+        self.data_num = int(len(self.data) + gaussian_noise(scale=data_num_noise, size=1).item())
 
         # self.config['max_entropy_num'] = (self.attr_num ** 2)*2
         self.config['max_entropy_num'] = (self.attr_num ** 2)/2 + self.attr_num

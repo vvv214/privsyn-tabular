@@ -12,7 +12,7 @@ from method.synthesis.AIM.mbi.Domain import Domain
 from method.api.base import FittedSynth, PrivacySpec, RunConfig, Synthesizer
 from method.api.utils import enforce_dataframe_schema, split_df_by_type
 from method.preprocess_common.load_data_common import data_preporcesser_common
-from method.util.rho_cdp import cdp_rho
+from method.util import cdp_rho, temporary_numpy_seed
 
 logger = logging.getLogger(__name__)
 
@@ -59,13 +59,11 @@ class FittedAIM(FittedSynth):
         return info_dict
 
     def sample(self, n: int, seed: Optional[int] = None) -> pd.DataFrame:
-        if seed is not None:
-            if hasattr(self._aim_generator, "prng"):
-                self._aim_generator.prng.seed(seed)
-            else:
-                np.random.seed(seed)
-
-        synth_dataset = self._aim_generator.syn_data(n, path=None, preprocesser=None)
+        seed_to_use = seed if seed is not None else (self._config.random_state if self._config else None)
+        with temporary_numpy_seed(seed_to_use):
+            if seed_to_use is not None and hasattr(self._aim_generator, "prng"):
+                self._aim_generator.prng.seed(seed_to_use)
+            synth_dataset = self._aim_generator.syn_data(n, path=None, preprocesser=None)
         synth_encoded_df: pd.DataFrame = synth_dataset.df
 
         x_num_rev, x_cat_rev = self._preprocesser.reverse_data(synth_encoded_df)
@@ -109,8 +107,7 @@ class AIMSynthesizer(Synthesizer):
         config: Optional[RunConfig] = None,
     ) -> FittedSynth:
         config = config or RunConfig()
-        if config.random_state is not None:
-            np.random.seed(config.random_state)
+        fit_seed = config.random_state
 
         extra_config = (config.extra or {}).copy()
 
@@ -180,7 +177,8 @@ class AIMSynthesizer(Synthesizer):
             max_model_size=args_obj.max_model_size,
             max_iters=args_obj.max_iters,
         )
-        mech.run(data, workload)
+        with temporary_numpy_seed(fit_seed):
+            mech.run(data, workload)
 
         return FittedAIM(
             aim_generator=mech,

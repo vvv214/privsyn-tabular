@@ -1,5 +1,6 @@
 from functools import reduce
 import numpy as np
+from method.util.dp_noise import gaussian_noise
 
 class Domain:
     # attr_list specifies the order of axis
@@ -115,10 +116,10 @@ class Smoother:
             new_index_to_value[new_index] += histogram[index]
             new_index_to_index[new_index].append(index)
         
-        histogram += np.random.normal(scale=noise, size=domain.size())
+        histogram += gaussian_noise(scale=noise, size=domain.size())
 
         for new_index in new_index_to_index:
-            value = new_index_to_value[new_index] + np.random.normal(scale=noise)
+            value = new_index_to_value[new_index] + gaussian_noise(scale=noise, size=1).item()
             indices_num = len(new_index_to_index[new_index])
             for index in new_index_to_index[new_index]:
                 histogram[index] = int(value/indices_num)

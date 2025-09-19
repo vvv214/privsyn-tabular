@@ -57,7 +57,6 @@ def make_synthetic(n_rows: int = 2000, n_num: int = 3, n_cat: int = 2):
         "task_type": "unknown",
         "n_num_features": len(num_cols),
         "n_cat_features": len(cat_cols),
-        "n_classes": 0,
         "train_size": n_rows,
         "test_size": 0,
         "val_size": 0,

@@ -50,9 +50,7 @@ def test_gum_synthesis_pipeline():
 
     # 2. Simulate infer_data_metadata
     print("Simulating data inference...")
-    target_column = 'income' # Assuming 'income' is the target column in adult.csv
-    feature_df = df_original.drop(columns=[target_column])
-    inferred_data = infer_data_metadata(df_original.copy(), target_column=target_column)
+    inferred_data = infer_data_metadata(df_original.copy())
     X_num_raw = inferred_data['X_num']
     X_cat_raw = inferred_data['X_cat']
     domain_data = inferred_data['domain_data']
@@ -143,10 +141,10 @@ def test_gum_synthesis_pipeline():
         binning = (age_meta.get('binning') or {})
         age_edges = binning.get('edges')
         if age_edges is None:
-            age_edges = np.linspace(feature_df['age'].min(), feature_df['age'].max(), num=11)
+            age_edges = np.linspace(df_original['age'].min(), df_original['age'].max(), num=11)
         synth_age = pd.to_numeric(synthesized_df['age'], errors='coerce')
         synth_age = synth_age.fillna(synth_age.mean())
-        orig_hist, _ = np.histogram(feature_df['age'], bins=age_edges)
+        orig_hist, _ = np.histogram(df_original['age'], bins=age_edges)
         synth_hist, _ = np.histogram(synth_age, bins=age_edges)
         orig_hist = orig_hist / orig_hist.sum()
         synth_hist = synth_hist / synth_hist.sum()
@@ -154,8 +152,8 @@ def test_gum_synthesis_pipeline():
         assert age_tvd < 0.35
 
         # Compare categorical marginal for sex
-        if 'sex' in feature_df.columns and 'sex' in synthesized_df.columns:
-            original_sex = feature_df['sex'].value_counts(normalize=True)
+        if 'sex' in df_original.columns and 'sex' in synthesized_df.columns:
+            original_sex = df_original['sex'].value_counts(normalize=True)
             synth_sex = synthesized_df['sex'].value_counts(normalize=True)
             all_sex = set(original_sex.index) | set(synth_sex.index)
             sex_tvd = 0.5 * sum(abs(original_sex.get(cat, 0.0) - synth_sex.get(cat, 0.0)) for cat in all_sex)

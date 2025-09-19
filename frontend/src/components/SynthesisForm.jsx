@@ -7,6 +7,8 @@ function SynthesisForm({
   loadingSample,
   isSubmitting = false,
 }) {
+  const datasetName = (formData.dataset_name || '').trim().toLowerCase();
+  const isSampleDataset = datasetName === 'adult';
   return (
     <section className="card">
       <div className="card-header">
@@ -85,7 +87,7 @@ function SynthesisForm({
                 name="data_file"
                 onChange={handleFileChange}
                 accept=".csv,.zip"
-                required={!formData.dataset_name.includes('adult')}
+                required={!isSampleDataset}
                 disabled={isSubmitting}
               />
               <button type="button" className="btn btn-outline-secondary" onClick={handleLoadSample} disabled={loadingSample || isSubmitting}>
